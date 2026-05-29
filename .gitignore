@@ -216,3 +216,24 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+# Adicionar essas linhas ao final do .gitignore que o GitHub gerou:
+
+# Environment
+.env
+.venv/
+venv/
+
+# Data (local plano B)
+data/
+*.parquet
+
+# Power BI
+*.pbix.bak
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
