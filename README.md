@@ -47,7 +47,7 @@ A entrega cobre todo o fluxo:
 ├── notebooks/                  # exportados do Fabric
 │   ├── 01_bronze_ingest.ipynb     # ✅ ingestão + persistência Delta
 │   ├── 02_silver_clean.ipynb      # ✅ filtros de qualidade + derivações
-│   └── 03_gold_model.ipynb        # ⏳ próximo
+│   └── 03_gold_model.ipynb        # ✅ star schema + ACS + NOAA enrichment
 ├── sql/                        # scripts SQL auxiliares
 ├── powerbi/
 │   ├── 3m_techcase.pbix
@@ -96,8 +96,8 @@ Tokens necessários (cadastro gratuito):
 | Setup de infraestrutura (Fabric Workspace, Lakehouse, GitHub, venv) | ✅ concluído (28/05) |
 | Ingestão Bronze (36 parquets + lookup zones) | ✅ concluído (29/05) |
 | Limpeza Silver (filtros, derivações, flag de anomalia) | ✅ concluído (30/05) |
-| Modelagem Gold + Enrichment (ACS + NOAA) | 🟡 em andamento (31/05) |
-| Modelo semântico Power BI (DirectLake) | ⏳ |
+| Modelagem Gold + Enrichment (ACS + NOAA) | ✅ concluído (31/05) |
+| Modelo semântico Power BI (DirectLake) | 🟡 em andamento (01/06) |
 | Features DAX (Calc Groups, UDFs, RLS, Field Parameters) | ⏳ |
 | Dashboard (5 páginas) | ⏳ |
 | Apresentação (.pptx) | ⏳ |
@@ -120,6 +120,14 @@ Tokens necessários (cadastro gratuito):
 - **180.145 anomalias flagged** (0,16%) — mantidas no dataset para análise no dashboard de Data Quality.
 - **Top anomalia detectada**: trip de **US$ 401.092** em 10 minutos (erro óbvio de meter) — vira caso de exception management na apresentação.
 - **Padrão YoY**: -3,4% em 2023, +7,5% em 2024 — narrativa de demand recovery pós-pandemia.
+
+### Gold (Star Schema)
+- **1 fato** (`fact_trips` — 115,7M trips particionado por year/month) + **6 dimensões**.
+- **dim_date enriquecida com clima NOAA** (1.096 dias × TMAX, TMIN, PRCP, SNOW, weather_category, is_extreme_weather).
+- **dim_zone enriquecida com ACS Borough demographics** (population, median income, density).
+- **Integridade referencial validada**: zero foreign keys orfãs no fato (padrão COALESCE → Unknown).
+- **Padrão híbrido de fontes externas**: NOAA via REST API com paginação anual (operational data), ACS via snapshot Borough-level (reference data).
+- **Gotcha documentado**: NOAA CDO API limita range a 1 ano por request — fix via loop por ano.
 
 Decisões técnicas e respostas-padrão para apresentação em [`docs/PRESENTATION_NOTES.md`](docs/PRESENTATION_NOTES.md).
 Material didático do código em [`docs/CODE_EXPLAINED.md`](docs/CODE_EXPLAINED.md).

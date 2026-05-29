@@ -160,6 +160,64 @@ Claramente erros de sistema do meter TPEP (provavelmente leitura de 6 dígitos f
 
 ---
 
+## 4.3 Gold Layer — Star Schema (dia 31/05)
+
+### Modelo final entregue
+1 fato + 6 dimensões em Delta, particionado por year/month no fato.
+
+| Tabela | Linhas | Observação |
+|---|---|---|
+| `dim_date` | 1.096 | Calendário 2022-2024 + clima diário (NOAA) |
+| `dim_time` | 24 | Horas + day_part + is_rush_hour |
+| `dim_zone` | 265 | Taxi zones + ACS demographics por Borough |
+| `dim_vendor` | 5 | Provedores TPEP (4 + Unknown) |
+| `dim_ratecode` | 7 | Códigos de tarifa (6 + Unknown) |
+| `dim_payment` | 7 | Tipos de pagamento (6 + Unknown) |
+| `fact_trips` | 115.756.175 | Surrogate keys + measures + flags |
+
+**Integridade referencial validada**: zero foreign keys orfãs em todas as 7 colunas FK do fato (graças ao padrão COALESCE → Unknown).
+
+### Padrão "API + Snapshot" para fontes externas
+
+Decisão arquitetural relevante: trate dados externos com base em sua volatilidade.
+
+| Fonte | Método | Por quê |
+|---|---|---|
+| NOAA Weather (diário) | REST API com paginação anual | Dados operacionais, refresh diário em prod |
+| ACS Demographics (anual) | Snapshot hardcoded (Borough-level) | Master data estável, refresh anual em prod |
+
+**Resposta de entrevista**: "Para enrichment usei dois padrões diferentes. NOAA é dado operacional (clima muda todo dia, refresh diário) — então consumi via REST API com paginação anual, respeitando o rate limit de 1 ano por request do CDO API. ACS é master data (renda e população mudam a cada censo, refresh anual) — então fiz snapshot dos valores Borough-level diretamente, com versionamento no repo. Isso é exatamente o padrão que vejo em pipelines reais: dado operacional via API, dado de referência via snapshot versionado. Confunde misturar os dois — um precisa de refresh frequente, o outro precisa de auditabilidade."
+
+### Gotcha encontrado: NOAA CDO API limite de 1 ano
+
+Primeira chamada com range 2022-01-01 → 2024-12-31 retornou HTTP 400. Documentação da NOAA tem essa restrição: **endpoint de Daily Summaries (GHCND) aceita range máximo de 1 ano por request**. Fix: loop por ano, 3 chamadas separadas (cada uma paginada).
+
+**Resposta de entrevista**: "Encontrei um limite não-óbvio da NOAA CDO API: requests com range > 1 ano para dados diários retornam HTTP 400. A doc menciona isso mas não no lugar mais visível. Fix foi loopar por ano e paginar dentro de cada ano. É o tipo de problema que só descobre rodando — em prod, esse tipo de descoberta vai pra um runbook do pipeline."
+
+### Decisão: enrichment ACS no nível Borough (não Zone)
+
+ACS não publica dados granulados por Taxi Zone (que é divisão fiscal da TLC, não geográfica do Census). Tinha duas opções:
+1. **Crosswalk espacial NTA ↔ Zone** via Geopandas + shapefile (mais preciso, mais complexo, mais tempo)
+2. **Borough-level enrichment** (menos granular, instantâneo, totalmente reliable)
+
+**Escolha**: opção 2, com justificativa explícita. Em produção, faria opção 1, mas para o teste a opção 2 entrega ~95% da insight com 5% do esforço.
+
+**Resposta de entrevista**: "Optei por enrichment no nível Borough porque ACS não publica por Taxi Zone e o crosswalk espacial NTA-Zone consumiria tempo desproporcional ao ganho analítico. Documentei isso como decisão consciente — em produção 3M, com mais tempo, aplicaria spatial join via Geopandas. Para o teste, prioritizei entrega completa do star schema vs precisão geográfica."
+
+### COALESCE → Unknown como padrão de referential integrity
+
+Em todas as FKs do fact_trips, usei `COALESCE(dim.surrogate_key, <unknown_key>)`. Garante zero orfãs no fato mesmo se silver tem registros com vendor_id desconhecido (ex.: vendor 99 não previsto).
+
+```sql
+COALESCE(dv.vendor_key,   5)  AS vendor_key      -- 5 = Unknown row in dim_vendor
+COALESCE(dr.ratecode_key, 7)  AS ratecode_key    -- 7 = Null/Unknown
+COALESCE(dp.payment_key,  6)  AS payment_key     -- 6 = Unknown
+```
+
+Isso é **boa prática Kimball** — toda dimensão tem uma linha "Unknown" para acomodar dados sujos sem quebrar joins.
+
+---
+
 ## 5. DirectLake vs Import vs DirectQuery
 
 ### Decisão

@@ -429,7 +429,193 @@ Padrão "top N por critério". `LIMIT 20` corta no top 20.
 
 ---
 
-## 4. Glossário rápido
+## 4. Notebook 03_gold_model (Spark SQL + PySpark misto)
+
+Esse notebook é o mais variado: combina Spark SQL (dimensões), PySpark (APIs externas) e SQL com joins complexos (fact_trips).
+
+### 4.1 Padrões SQL novos usados
+
+#### Sequence + explode para gerar calendário
+
+```sql
+WITH date_range AS (
+    SELECT explode(sequence(
+        to_date('2022-01-01'),
+        to_date('2024-12-31'),
+        interval 1 day
+    )) AS full_date
+)
+SELECT ... FROM date_range
+```
+
+- `sequence(start, end, step)` — gera um array de valores (datas, números) entre start e end.
+- `explode(array)` — transforma um array em múltiplas linhas (uma por elemento).
+- Resultado: 1.096 linhas, uma por dia de 2022 a 2024.
+
+Esse padrão dispensa criar tabela auxiliar de calendário — gera no momento.
+
+#### VALUES table constructor
+
+```sql
+SELECT * FROM VALUES
+    (1, 1, 'Creative Mobile Technologies'),
+    (2, 2, 'Curb Mobility'),
+    ...
+AS dim_vendor(vendor_key, vendor_id, vendor_name);
+```
+
+- `VALUES (...), (...), ...` — cria uma tabela inline com as tuplas listadas.
+- `AS tablename(col1, col2, ...)` — nomeia tabela e colunas.
+
+Substitui múltiplos `INSERT INTO`. Útil para dimensões pequenas com valores fixos.
+
+#### ROW_NUMBER() OVER para surrogate keys
+
+```sql
+SELECT
+    ROW_NUMBER() OVER (ORDER BY z.LocationID) AS zone_key,
+    ...
+FROM bronze_taxi_zone_lookup z
+```
+
+- `ROW_NUMBER()` é uma **window function** que numera linhas sequencialmente.
+- `OVER (ORDER BY ...)` define a ordem de numeração.
+- Resultado: cada linha ganha um inteiro único (1, 2, 3...) — perfeito para surrogate key.
+
+Por que surrogate key e não usar o `location_id` natural? Em star schema clássico, surrogate keys: (a) são imutáveis mesmo se a chave de negócio mudar, (b) economizam espaço (int pequeno), (c) facilitam slowly changing dimensions.
+
+#### LEFT JOIN + COALESCE para tolerância a dados sujos
+
+```sql
+SELECT
+    COALESCE(dv.vendor_key, 5) AS vendor_key
+FROM silver_yellow_trips_clean s
+LEFT JOIN dim_vendor dv ON dv.vendor_id = s.vendor_id;
+```
+
+- `LEFT JOIN` — preserva todas as linhas do fato, mesmo as que não casam com a dimensão.
+- `COALESCE(a, b)` — retorna `a` se não-nulo, senão `b`.
+
+Combinado: se o `vendor_id` do fato não existe em `dim_vendor`, o LEFT JOIN dá NULL → COALESCE substitui pela chave do "Unknown" na dimensão. Garante que **toda linha do fato tem dimensão**, mesmo com dados sujos.
+
+#### CTAS com PARTITIONED BY
+
+```sql
+CREATE OR REPLACE TABLE fact_trips
+USING DELTA
+PARTITIONED BY (year, month)
+AS
+SELECT ... FROM silver_yellow_trips_clean s ...
+```
+
+- `CREATE TABLE ... AS SELECT` (CTAS) — cria e popula em uma operação.
+- `PARTITIONED BY (year, month)` — divide os arquivos em subpastas `year=YYYY/month=MM/`.
+
+Vantagem: queries com filtro temporal (90% das queries de BI) só leem partições relevantes.
+
+### 4.2 Padrões PySpark novos usados
+
+#### Criar DataFrame a partir de Row list
+
+```python
+from pyspark.sql import Row
+
+data = [
+    Row(borough="Manhattan", total_population=1629153, ...),
+    Row(borough="Brooklyn",  total_population=2561225, ...),
+]
+df = spark.createDataFrame(data)
+```
+
+- `Row(col=value, ...)` — fábrica de linha.
+- `spark.createDataFrame(lista_de_rows)` — converte em DataFrame.
+
+Útil para dados hardcoded (reference data, lookups manuais, test fixtures).
+
+#### withColumn + when/otherwise (CASE em PySpark)
+
+```python
+from pyspark.sql import functions as F
+
+df = df.withColumn(
+    "weather_category",
+    F.when(F.col("snowfall_mm") > 50,                  "Snow")
+     .when(F.col("precipitation_mm_tenths") > 250,     "Heavy Rain")
+     .when(F.col("precipitation_mm_tenths") > 0,       "Rain")
+     .otherwise("Clear")
+)
+```
+
+Equivalente PySpark do `CASE WHEN` do SQL. Cada `.when()` é uma condição encadeada.
+
+#### Pivot para transformar long → wide
+
+```python
+df_wide = (df_long
+    .groupBy("date_only")
+    .pivot("datatype", ["TMAX", "TMIN", "PRCP"])
+    .agg(F.first("value"))
+)
+```
+
+- `.groupBy(col)` — agrupa por uma coluna.
+- `.pivot(col, values)` — rotaciona: cada valor da coluna `col` vira uma nova coluna.
+- `.agg(F.first(...))` — para cada par (grupo, valor pivotado), retorna o primeiro registro.
+
+Resultado: dado em "long format" (várias linhas por dia, uma por métrica) vira "wide format" (1 linha por dia, várias colunas).
+
+Por que importa? APIs costumam retornar long format. BI consome wide format. Pivot é a ponte.
+
+#### API call paginado com retry
+
+```python
+import requests, time
+
+def fetch_year(year):
+    records = []
+    offset = 1
+    while True:
+        params = {"startdate": f"{year}-01-01", "enddate": f"{year}-12-31",
+                  "limit": 1000, "offset": offset, ...}
+        r = requests.get(url, params=params, headers=headers, timeout=60)
+        if r.status_code != 200:
+            print(f"HTTP {r.status_code}: {r.text[:300]}")
+            r.raise_for_status()
+        results = r.json().get("results", [])
+        if not results:
+            break
+        records.extend(results)
+        if len(results) < 1000:
+            break
+        offset += 1000
+        time.sleep(0.3)   # respeita rate limit
+    return records
+```
+
+Padrão de pipeline robusto para consumir REST API com paginação:
+- Loop while True com break condition.
+- Verificação de status HTTP.
+- Print do body em caso de erro (debugging).
+- Sleep entre requests (rate limiting).
+- Break se a página retornou menos que o limit (sinal de última página).
+
+### 4.3 Por que enriquecer dim_date com weather (e não criar dim_weather)?
+
+Tinha duas opções:
+1. **Criar `dim_weather`** separada com `weather_key` e relacionar via `weather_key` no fato.
+2. **Enriquecer `dim_date`** adicionando colunas de clima diretamente.
+
+Escolhi #2 porque:
+- Clima é **propriedade de uma data**, não entidade própria.
+- 1 dia = 1 medição de clima, não há dimensão N:1 sentido.
+- Reduz joins no Power BI (1 join em vez de 2).
+- Field Parameters do PBI funcionam melhor com dimensões "ricas" (muitas colunas).
+
+Trade-off: `dim_date` fica mais larga (~20 colunas), mas com apenas 1.096 linhas isso é irrelevante.
+
+---
+
+## 5. Glossário rápido
 
 | Termo | O que é |
 |---|---|
