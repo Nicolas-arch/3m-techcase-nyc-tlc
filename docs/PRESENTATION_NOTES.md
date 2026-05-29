@@ -160,6 +160,55 @@ Claramente erros de sistema do meter TPEP (provavelmente leitura de 6 dígitos f
 
 ---
 
+## 4.4 Insights validados pelo Business Sanity Query (dia 31/05)
+
+Query analítica representativa rodada contra o Gold antes do Power BI. Confirma coerência do modelo e revela patterns de negócio.
+
+### Distribuição Borough x Year (2024)
+
+| Borough | Trips | % total | Avg fare USD |
+|---|---|---|---|
+| Manhattan | 35.270.447 | 95,4% | 23,94 |
+| Queens | 3.650.417 | 9,9% | 73,21 |
+| Brooklyn | 554.806 | 1,5% | 31,82 |
+| Bronx | 114.001 | 0,3% | 35,88 |
+| EWR (Newark) | 1.247 | <0,01% | 93,70 |
+| Staten Island | 1.476 | <0,01% | 44,66 |
+
+### Achados de negócio importantes
+
+**1. Yellow Taxi é fenômeno de Manhattan** — 95%+ do volume. Em supply chain, equivalente à curva ABC clássica onde poucos pares O-D respondem pela maioria das movimentações.
+
+**2. Avg fare por Borough refleta padrão operacional**:
+- Manhattan: trips curtas urbanas ($18-24)
+- Queens: contém JFK + LaGuardia → surcharge de aeroporto ($54-73)
+- EWR: Newark Airport → distância longa + airport fee ($93-105)
+- Outer boroughs: trips de médio porte ($30-66)
+
+**3. Outer boroughs explodiram em demanda em 2024** (descoberta valiosa):
+- Brooklyn: 245.894 (2023) → **554.806 (2024) = +125% YoY**
+- Bronx: 51.863 (2023) → **114.001 (2024) = +120% YoY**
+- Enquanto Manhattan teve recuperação modesta (+6,9%), outer boroughs dobraram.
+
+**Storytelling para slide**: "Manhattan ainda domina, mas o crescimento de demanda em 2024 está nos outer boroughs. Padrão típico de supply chain quando hubs principais saturam e demanda migra para nodes secundários — em transporte e em distribuição B2B."
+
+### Achado de qualidade — médias infladas em boroughs de baixo volume
+
+Avg trip_distance em alguns boroughs aparece absurdo:
+- Staten Island 2024: avg_distance **94,69 milhas** (impossível dentro de NYC)
+- Bronx 2022: avg_distance **40,69 milhas**
+- Brooklyn 2022: avg_distance **48,69 milhas**
+
+**Causa**: em boroughs com baixo volume de trips (1k-260k), os 0,16% de trips anômalas (`is_anomalous = 1`) movem fortemente a média. Em Manhattan (35M trips), o mesmo % de anomalias é diluído.
+
+**Decisão para o dashboard**:
+- Visões executivas: **filtrar `is_anomalous = 0`** ou usar **mediana** em vez de média.
+- Página de Data Quality: mostrar anomalias explicitamente para evidenciar o cuidado.
+
+**Resposta de entrevista**: "Ao rodar uma query de sanidade descobri que averages nos outer boroughs eram absurdamente altos — Staten Island com avg_distance de 94 milhas. Investiguei e era inflation pela presença das 180k anomalias (`is_anomalous=1`) em pequenos volumes onde elas não diluem. Decisão para o dashboard: filtrar anomalias nas visões executivas e mostrar mediana. Isso ilustra exatamente o por quê de manter a flag `is_anomalous` em vez de descartar — o dado bruto tem valor para análise de qualidade, mas precisa ser filtrado para análise operacional."
+
+---
+
 ## 4.3 Gold Layer — Star Schema (dia 31/05)
 
 ### Modelo final entregue
