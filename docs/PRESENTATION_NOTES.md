@@ -125,6 +125,41 @@ Mostra: (1) sempre validar dado antes de modelar, (2) construir Bronze como espe
 
 ---
 
+## 4.2 Descobertas adicionais — Silver Layer (dia 30/05)
+
+### Resumo numérico
+- Bronze: **119.136.044 trips**
+- Silver: **115.756.175 trips**
+- Descartado: **3.379.869 (2,84%)**
+- Anomalias flagged (mantidas com flag): **180.145 (0,16%)**
+
+### Breakdown de descartes
+| Motivo | Linhas | % bronze |
+|---|---|---|
+| Distância ≤ 0 | 2.123.821 | 1,78% |
+| Tarifa negativa | 1.365.574 | 1,15% |
+| Duração inválida (dropoff ≤ pickup) | 61.114 | 0,05% |
+| Vazamento temporal (2001-2026) | 663 | 0,0006% |
+
+**Insight de apresentação**: o "lixo" da TLC não é o que parecia. Os 663 vazamentos temporais (descoberta de ontem) são insignificantes perto dos 2,1M trips com distância zero (cancelamentos / erros de meter) e 1,4M com tarifa negativa (estornos / correções). Isso reforça uma boa prática de data engineering — **sempre quantifique antes de assumir**.
+
+### Top anomalias detectadas
+Trips flagged como `is_anomalous = 1` (180k registros). Top 4 por total_amount:
+
+| Pickup | Duration | Distance | Total |
+|---|---|---|---|
+| 2022-01-07 | 10 min | 3.3 mi | **$401.092,32** |
+| 2022-06-11 | 8 min | 1.2 mi | **$395.844,94** |
+| 2023-06-12 | 11 min | 1.5 mi | **$386.983,63** |
+| 2024-11-01 | 15 min | 2 mi | **$335.544,44** |
+
+Claramente erros de sistema do meter TPEP (provavelmente leitura de 6 dígitos foi feita errada — um zero a mais). Em supply chain, esse tipo de outlier seria caso direto de auditoria/fraude.
+
+### Resposta de entrevista — qualidade de dados
+"Na camada Silver descartei 2,84% do volume Bronze (3,4M trips). Quebra interessante: a maior parte não é vazamento temporal como eu suspeitava no dia 1, e sim trips com distância zero (1,78%) — provavelmente cancelamentos onde o meter abriu mas não rodou — e tarifas negativas (1,15%) — estornos e correções. Mantive 180k anomalias com flag (não descartei) para análise no dashboard de Data Quality. Top anomalia: trip de US$401k em 10 minutos — erro óbvio de meter. Em supply chain, esse padrão de descobrir patterns de qualidade é o que diferencia 'limpar dado' de 'entender o sistema operacional por trás do dado'."
+
+---
+
 ## 5. DirectLake vs Import vs DirectQuery
 
 ### Decisão

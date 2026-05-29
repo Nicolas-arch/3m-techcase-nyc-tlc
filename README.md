@@ -42,11 +42,12 @@ A entrega cobre todo o fluxo:
 │   ├── CONVENTIONS.md          # convenções de nomes e código
 │   ├── DATA_SOURCES.md         # fontes de dados e como acessá-las
 │   ├── DATA_DICTIONARY.md      # dicionário das tabelas Gold (será preenchido)
-│   └── PRESENTATION_NOTES.md   # decisões técnicas + storytelling p/ apresentação
+│   ├── PRESENTATION_NOTES.md   # decisões técnicas + storytelling p/ apresentação
+│   └── CODE_EXPLAINED.md       # material de apoio (didático) do código
 ├── notebooks/                  # exportados do Fabric
 │   ├── 01_bronze_ingest.ipynb     # ✅ ingestão + persistência Delta
-│   ├── 02_silver_clean.ipynb      # ⏳ próximo
-│   └── 03_gold_model.ipynb        # ⏳
+│   ├── 02_silver_clean.ipynb      # ✅ filtros de qualidade + derivações
+│   └── 03_gold_model.ipynb        # ⏳ próximo
 ├── sql/                        # scripts SQL auxiliares
 ├── powerbi/
 │   ├── 3m_techcase.pbix
@@ -94,8 +95,8 @@ Tokens necessários (cadastro gratuito):
 |---|---|
 | Setup de infraestrutura (Fabric Workspace, Lakehouse, GitHub, venv) | ✅ concluído (28/05) |
 | Ingestão Bronze (36 parquets + lookup zones) | ✅ concluído (29/05) |
-| Limpeza Silver (filtros, derivações, flags) | 🟡 em andamento (30/05) |
-| Modelagem Gold + Enrichment (ACS + NOAA) | ⏳ |
+| Limpeza Silver (filtros, derivações, flag de anomalia) | ✅ concluído (30/05) |
+| Modelagem Gold + Enrichment (ACS + NOAA) | 🟡 em andamento (31/05) |
 | Modelo semântico Power BI (DirectLake) | ⏳ |
 | Features DAX (Calc Groups, UDFs, RLS, Field Parameters) | ⏳ |
 | Dashboard (5 páginas) | ⏳ |
@@ -103,13 +104,25 @@ Tokens necessários (cadastro gratuito):
 
 ## Highlights do desenvolvimento
 
-- **119.136.044 trips** ingeridas em Delta (Bronze) a partir de 36 arquivos parquet (~1.85 GB).
+### Bronze
+- **119.136.044 trips** ingeridas em Delta a partir de 36 arquivos parquet (~1.85 GB).
 - **Schema canônico explícito** para resolver schema drift entre arquivos da TLC (INT vs BIGINT, `airport_fee` vs `Airport_fee`).
 - **Idempotência** na ingestão: re-execução não duplica arquivos nem dados.
-- **663 registros descobertos com data fora do escopo** (datas de 2001 a 2026) — filtrados na camada Silver, documentados como achado de qualidade.
-- **Padrão YoY identificado**: -3.4% em 2023, +7.5% em 2024 — narrativa de demand recovery pós-pandemia.
+- **663 registros descobertos com data fora do escopo** (2001 a 2026) — descoberta de qualidade de dados.
+
+### Silver
+- **115.756.175 trips** após limpeza (98,16% do volume Bronze).
+- **3.379.869 linhas descartadas (2,84%)** com breakdown documentado:
+  - 2.123.821 com distância ≤ 0 (cancelamentos / erros de meter)
+  - 1.365.574 com tarifa negativa (estornos / correções)
+  - 61.114 com duração inválida (dropoff ≤ pickup)
+  - 663 com vazamento temporal (2001-2026)
+- **180.145 anomalias flagged** (0,16%) — mantidas no dataset para análise no dashboard de Data Quality.
+- **Top anomalia detectada**: trip de **US$ 401.092** em 10 minutos (erro óbvio de meter) — vira caso de exception management na apresentação.
+- **Padrão YoY**: -3,4% em 2023, +7,5% em 2024 — narrativa de demand recovery pós-pandemia.
 
 Decisões técnicas e respostas-padrão para apresentação em [`docs/PRESENTATION_NOTES.md`](docs/PRESENTATION_NOTES.md).
+Material didático do código em [`docs/CODE_EXPLAINED.md`](docs/CODE_EXPLAINED.md).
 
 ## Critérios do teste
 
