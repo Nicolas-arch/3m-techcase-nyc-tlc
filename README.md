@@ -41,20 +41,18 @@ A entrega cobre todo o fluxo:
 │   ├── ARCHITECTURE.md         # arquitetura técnica
 │   ├── CONVENTIONS.md          # convenções de nomes e código
 │   ├── DATA_SOURCES.md         # fontes de dados e como acessá-las
-│   └── DATA_DICTIONARY.md      # dicionário das tabelas Gold (será preenchido)
+│   ├── DATA_DICTIONARY.md      # dicionário das tabelas Gold (será preenchido)
+│   └── PRESENTATION_NOTES.md   # decisões técnicas + storytelling p/ apresentação
 ├── notebooks/                  # exportados do Fabric
-│   ├── 01_bronze_ingest.ipynb
-│   ├── 02_silver_clean.ipynb
-│   └── 03_gold_model.ipynb
+│   ├── 01_bronze_ingest.ipynb     # ✅ ingestão + persistência Delta
+│   ├── 02_silver_clean.ipynb      # ⏳ próximo
+│   └── 03_gold_model.ipynb        # ⏳
 ├── sql/                        # scripts SQL auxiliares
 ├── powerbi/
 │   ├── 3m_techcase.pbix
 │   ├── theme.json
 │   └── measures_reference.md
 ├── python_fallback/            # ingestão e ETL local (plano B)
-│   ├── ingest_local.py
-│   ├── clean_local.py
-│   └── requirements.txt
 ├── images/                     # diagramas e screenshots
 ├── .env.example                # template das variáveis de ambiente
 ├── .gitignore
@@ -73,7 +71,7 @@ A entrega cobre todo o fluxo:
 ## Configuração de ambiente
 
 ```bash
-git clone https://github.com/<your-user>/3m-techcase-nyc-tlc.git
+git clone https://github.com/Nicolas-arch/3m-techcase-nyc-tlc.git
 cd 3m-techcase-nyc-tlc
 
 # venv para o plano B local
@@ -94,20 +92,30 @@ Tokens necessários (cadastro gratuito):
 
 | Etapa | Status |
 |---|---|
-| Setup de infraestrutura | 🟡 em andamento |
-| Ingestão Bronze | ⏳ |
-| Limpeza Silver | ⏳ |
-| Modelagem Gold + Enrichment | ⏳ |
-| Modelo semântico Power BI | ⏳ |
-| Features DAX (Calc Groups, UDFs, RLS) | ⏳ |
+| Setup de infraestrutura (Fabric Workspace, Lakehouse, GitHub, venv) | ✅ concluído (28/05) |
+| Ingestão Bronze (36 parquets + lookup zones) | ✅ concluído (29/05) |
+| Limpeza Silver (filtros, derivações, flags) | 🟡 em andamento (30/05) |
+| Modelagem Gold + Enrichment (ACS + NOAA) | ⏳ |
+| Modelo semântico Power BI (DirectLake) | ⏳ |
+| Features DAX (Calc Groups, UDFs, RLS, Field Parameters) | ⏳ |
 | Dashboard (5 páginas) | ⏳ |
 | Apresentação (.pptx) | ⏳ |
+
+## Highlights do desenvolvimento
+
+- **119.136.044 trips** ingeridas em Delta (Bronze) a partir de 36 arquivos parquet (~1.85 GB).
+- **Schema canônico explícito** para resolver schema drift entre arquivos da TLC (INT vs BIGINT, `airport_fee` vs `Airport_fee`).
+- **Idempotência** na ingestão: re-execução não duplica arquivos nem dados.
+- **663 registros descobertos com data fora do escopo** (datas de 2001 a 2026) — filtrados na camada Silver, documentados como achado de qualidade.
+- **Padrão YoY identificado**: -3.4% em 2023, +7.5% em 2024 — narrativa de demand recovery pós-pandemia.
+
+Decisões técnicas e respostas-padrão para apresentação em [`docs/PRESENTATION_NOTES.md`](docs/PRESENTATION_NOTES.md).
 
 ## Critérios do teste
 
 - ✅ Escopo: Yellow Taxi 2022–2024
 - ✅ Fonte externa correlacionada (ACS Demographics + NOAA Weather)
-- ✅ Features obrigatórias: Time Intelligence, Field Parameters, Calculation Groups, Conditional Formatting, RLS, UDFs
+- ✅ Features obrigatórias planejadas: Time Intelligence, Field Parameters, Calculation Groups, Conditional Formatting, RLS, UDFs
 
 ## Autor
 
