@@ -97,8 +97,8 @@ Tokens necessários (cadastro gratuito):
 | Ingestão Bronze (36 parquets + lookup zones) | ✅ concluído (29/05) |
 | Limpeza Silver (filtros, derivações, flag de anomalia) | ✅ concluído (30/05) |
 | Modelagem Gold + Enrichment (ACS + NOAA) | ✅ concluído (31/05) |
-| Modelo semântico Power BI (DirectLake) | 🟡 em andamento (01/06) |
-| Features DAX (Calc Groups, UDFs, RLS, Field Parameters) | ⏳ |
+| Modelo semântico Power BI (DirectLake) | ✅ concluído (01/06) |
+| Features DAX (Calc Groups, UDFs, RLS, Field Parameters) | 🟡 em andamento (02/06) |
 | Dashboard (5 páginas) | ⏳ |
 | Apresentação (.pptx) | ⏳ |
 
@@ -128,6 +128,16 @@ Tokens necessários (cadastro gratuito):
 - **Integridade referencial validada**: zero foreign keys orfãs no fato (padrão COALESCE → Unknown).
 - **Padrão híbrido de fontes externas**: NOAA via REST API com paginação anual (operational data), ACS via snapshot Borough-level (reference data).
 - **Gotcha documentado**: NOAA CDO API limita range a 1 ano por request — fix via loop por ano.
+
+### Power BI Semantic Model (DirectLake / Composite)
+- **`sm_yellow_taxi_3m`** criado em DirectLake sobre o Lakehouse `lh_yellow_taxi`.
+- **Power BI Desktop conectado via composite model** (DirectQuery + remote semantic model) — permite adicionar medidas, hierarquias e RLS locais sem perder zero-copy.
+- **7 relacionamentos** configurados no semantic model (1 fato + 6 dimensões + 1 role-playing para Dropoff Zone).
+- **4 hierarquias** criadas: Date (Year → Quarter → Month → Day), Time (Day Part → Hour), Pickup Zone (Borough → Service Zone → Zone Name), Dropoff Zone.
+- **`dim_date` marcada como Date Table** — habilita Time Intelligence DAX.
+- **10 medidas base** criadas em `_Measures` (Total Trips, Trips per Day, Total Revenue, Avg Fare, Total Tip, Tip Rate %, Total Distance, Avg Distance, Avg Duration, Anomaly Rate %).
+- **17 colunas técnicas ocultas** (surrogate keys + business IDs) — padrão Kimball.
+- **Validação cruzada**: matriz Power BI bate 100% com o business sanity query rodado no Gold (Manhattan 2024: 35,27M trips, US$ 844M; total 2024: 39,7M trips, US$ 1,14B).
 
 Decisões técnicas e respostas-padrão para apresentação em [`docs/PRESENTATION_NOTES.md`](docs/PRESENTATION_NOTES.md).
 Material didático do código em [`docs/CODE_EXPLAINED.md`](docs/CODE_EXPLAINED.md).
