@@ -7,7 +7,10 @@
 1. [Conceitos fundamentais](#1-conceitos-fundamentais)
 2. [Notebook 01_bronze_ingest (PySpark)](#2-notebook-01_bronze_ingest-pyspark)
 3. [Notebook 02_silver_clean (Spark SQL)](#3-notebook-02_silver_clean-spark-sql)
-4. [Glossário rápido](#4-glossário-rápido)
+4. [Notebook 03_gold_model (Spark SQL + PySpark misto)](#4-notebook-03_gold_model-spark-sql--pyspark-misto)
+5. [Power BI Semantic Model (dia 01/06)](#5-power-bi-semantic-model-dia-0106)
+6. [DAX Advanced (dia 02/06)](#6-dax-advanced-dia-0206)
+7. [Glossário rápido](#7-glossário-rápido)
 
 ---
 
@@ -615,7 +618,276 @@ Trade-off: `dim_date` fica mais larga (~20 colunas), mas com apenas 1.096 linhas
 
 ---
 
-## 5. Glossário rápido
+## 5. Power BI Semantic Model (dia 01/06)
+
+Camada de modelagem que conecta o Lakehouse Gold ao Power BI Desktop. Aqui o "modelo" deixa de ser conceito SQL e vira **modelo semântico** — tabular, com relacionamentos, hierarquias e medidas DAX.
+
+### 5.1 DirectLake vs Live Connection vs Composite Model
+
+Quando você cria um semantic model no Fabric e conecta o Power BI Desktop, três modos são possíveis:
+
+| Modo | O que faz | Pode editar no PBI Desktop? |
+|---|---|---|
+| **Live connection** (padrão) | Lê só a metadata do semantic model do Fabric | ❌ Não. Modelo é read-only. |
+| **DirectLake** | Lê Delta direto do OneLake sem importar | ❌ Também read-only no PBI Desktop |
+| **Composite Model (DirectQuery + remote)** | Modelo local em DirectQuery sobre o semantic model | ✅ Sim — pode adicionar medidas, relações, etc. |
+
+No nosso caso, ao clicar em **"Fazer alterações neste modelo"** no PBI Desktop, ele converteu de Live para **Composite**. Os dados continuam morando no Lakehouse (não são importados pro `.pbix`), mas agora podemos adicionar uma camada local de DAX e relacionamentos.
+
+Trade-off arquitetural: leve perda de performance vs DirectLake puro, mas ganho de flexibilidade pra customizações sem precisar voltar pro Fabric a cada mudança.
+
+### 5.2 Relacionamentos no Power BI vs no Fabric
+
+Os 7 relacionamentos do star schema foram criados **no editor web do Fabric** (semantic model) — não no PBI Desktop. Razão: o diálogo "Novo relacionamento" do PBI Desktop tem um bug conhecido em composite models recém-criados (dropdown da segunda tabela fica vazio).
+
+Workflow correto:
+1. Cria relação no Fabric semantic model editor (`Gerenciar relações` → `Novo`).
+2. Volta no PBI Desktop e clica em **Página Inicial → Atualizar** (refresh do composite model).
+3. As relações aparecem no Model view do PBI.
+
+Todas as 7 relações são **Many-to-One** com direção single. O modelo é star schema clássico.
+
+### 5.3 `dim_date` marcada como Date Table
+
+Uma tabela tem que ser explicitamente "marcada como tabela de data" pra que as funções de Time Intelligence (TOTALYTD, SAMEPERIODLASTYEAR, DATESINPERIOD) funcionem.
+
+Procedimento:
+1. Painel **Dados** → clica direito em `dim_date` → **Marcar como tabela de data**.
+2. Escolhe a coluna `full_date` (a única que é DATE puro, sem horas).
+
+DAX agora reconhece a `dim_date` como a tabela de calendário canônica do modelo.
+
+### 5.4 Hierarquias
+
+Hierarquias agrupam colunas relacionadas pra criar drill-down nos visuais. Foram criadas 4:
+
+- **Date Hierarchy** (`dim_date`): Year → Quarter → Month → Day
+- **Pickup Zone Hierarchy** (`dim_zone`): Borough → Service Zone → Zone Name
+- **Dropoff Zone Hierarchy** (`dim_zone_dropoff`): Dropoff Borough → Dropoff Service Zone → Dropoff Zone Name
+- **Time Hierarchy** (`dim_time`): Day Part → Hour
+
+Quando arrasta a hierarquia pra um visual, o usuário pode dar drill-down (Year → Quarter → Month) com botões de navegação no visual.
+
+### 5.5 Tabela `_Measures` (medidas organizadas)
+
+Boa prática: criar uma tabela vazia chamada `_Measures` (underscore na frente faz aparecer no topo do painel) e armazenar todas as medidas DAX nela.
+
+Vantagens:
+- Separa medidas dos campos reais.
+- Facilita encontrar quando o modelo cresce.
+- Convenção comum em projetos profissionais de Power BI.
+
+Como criar: **Página Inicial → Inserir dados → tabela com 1 coluna vazia → nomeia `_Measures` → carrega → oculta a coluna**.
+
+### 5.6 As 10 medidas base — padrões DAX
+
+Todas em `_Measures` com sintaxe consistente:
+
+```dax
+Total Trips = SUM ( fact_trips[trip_count] )
+```
+
+Padrão `SUM` puro sobre coluna do fato. `trip_count` é sempre 1, então `SUM(trip_count) = COUNT(trip_count) = número de linhas`.
+
+```dax
+Trips per Day = 
+DIVIDE ( [Total Trips], DISTINCTCOUNT ( dim_date[full_date] ) )
+```
+
+Padrão `DIVIDE(numerator, denominator)` — sempre prefira `DIVIDE` em vez de `/` porque ele lida com divisão por zero retornando BLANK (ou um valor alternativo se passar o 3º parâmetro).
+
+`DISTINCTCOUNT( dim_date[full_date] )` conta o número de dias **no contexto atual do filtro**. Se o filtro é só 2024, retorna ~366 dias.
+
+```dax
+Avg Fare = DIVIDE ( [Total Revenue], [Total Trips] )
+```
+
+Referência a outras medidas com `[Nome]` — DAX resolve a referência dinamicamente no contexto do visual.
+
+### 5.7 Esconder PKs/FKs e business IDs
+
+Boas práticas Kimball aplicadas:
+- **Surrogate keys (`*_key`)**: ocultar permanentemente. Uso interno do modelo, usuário final não deve ver.
+- **Business IDs (`*_id`)**: ocultar do painel, mas mantidos no modelo. Servem como audit trail e ponte pra joins externos.
+
+No painel **Dados** do PBI Desktop, clica direito na coluna → **Ocultar na exibição de relatório**. Total: 17 colunas ocultadas no nosso modelo.
+
+---
+
+## 6. DAX Advanced (dia 02/06)
+
+Os 3 recursos mais sofisticados do DAX moderno, que diferenciam dashboard amador de profissional.
+
+### 6.1 Calculation Group "Time Analytics"
+
+**O que é**: grupo de itens DAX (calculation items) que aplicam time intelligence em **qualquer medida selecionada**, em runtime. Em vez de duplicar cada medida em 7 versões (Total Revenue, Total Revenue YoY, Total Revenue YTD, etc.), você cria 1 grupo com 7 itens, e o usuário escolhe o item via slicer.
+
+**Sintaxe** (criada no Tabular Editor 2, salva via TMDL):
+
+```dax
+// Calculation Item: Current
+SELECTEDMEASURE ()
+
+// Calculation Item: PY (Prior Year)
+CALCULATE (
+    SELECTEDMEASURE (),
+    SAMEPERIODLASTYEAR ( dim_date[full_date] )
+)
+
+// Calculation Item: YoY (Year over Year delta)
+SELECTEDMEASURE () -
+CALCULATE (
+    SELECTEDMEASURE (),
+    SAMEPERIODLASTYEAR ( dim_date[full_date] )
+)
+
+// Calculation Item: YoY %
+VAR _Current = SELECTEDMEASURE ()
+VAR _PY = CALCULATE ( SELECTEDMEASURE (), SAMEPERIODLASTYEAR ( dim_date[full_date] ) )
+RETURN DIVIDE ( _Current - _PY, _PY )
+
+// Calculation Item: YTD (Year to Date)
+TOTALYTD ( SELECTEDMEASURE (), dim_date[full_date] )
+
+// Calculation Item: PYTD (Prior Year to Date)
+CALCULATE (
+    TOTALYTD ( SELECTEDMEASURE (), dim_date[full_date] ),
+    SAMEPERIODLASTYEAR ( dim_date[full_date] )
+)
+
+// Calculation Item: MAT (Moving Annual Total)
+CALCULATE (
+    SELECTEDMEASURE (),
+    DATESINPERIOD (
+        dim_date[full_date],
+        MAX ( dim_date[full_date] ),
+        -12,
+        MONTH
+    )
+)
+```
+
+**Conceito-chave**: `SELECTEDMEASURE()` é um placeholder. Quando o usuário arrasta `[Total Revenue]` num visual e seleciona "YoY" no slicer do Calc Group, o engine substitui `SELECTEDMEASURE()` por `[Total Revenue]` em runtime.
+
+**Format String dinâmico**: para itens como `YoY %` que precisam aparecer como percentual independente da medida base, configura no item:
+```dax
+"0.00%;-0.00%;0.00%"
+```
+
+Isso sobrescreve o formato natural da medida quando esse item está ativo.
+
+**Ordinal**: campo zero-based que define ordem dos itens no slicer (0, 1, 2, 3...). Sem isso, ficam em ordem alfabética.
+
+**Onde criar**: Tabular Editor 2 (TE2) é a ferramenta padrão. PBI Desktop não tem UI nativa pra criar Calc Groups (precisa de TE2). Workflow:
+1. PBI Desktop → **Ferramentas externas → Tabular Editor**.
+2. TE2 abre conectado ao modelo.
+3. **Tables** (clica direito) → **Create New → Calculation Group**.
+4. Cria os Calculation Items dentro.
+5. **File → Save** no TE2 — propaga as mudanças pro PBI Desktop.
+
+### 6.2 Field Parameters
+
+**O que é**: tabela "metadata" que permite o usuário escolher dinamicamente qual **campo** (medida ou coluna) está sendo usado num visual.
+
+Diferente do Calc Group que escolhe **transformação** sobre uma medida, o Field Parameter escolhe **qual medida ou dimensão** entra no visual.
+
+**Como criar**: PBI Desktop → **Modelagem → Novo parâmetro → Campos** (Fields).
+
+Diálogo:
+- Nome: `FP_Metric`
+- Lista de medidas a expor: `[Total Trips]`, `[Total Revenue]`, etc.
+- Marca "Adicionar e segmentar dados nesta página" → cria slicer automático.
+
+Por baixo dos panos, o PBI cria uma **tabela calculada** com sintaxe TMDL especial:
+
+```dax
+FP_Metric = {
+    ("Trips",    NAMEOF ( '_Measures'[Total Trips] ),    0),
+    ("Revenue",  NAMEOF ( '_Measures'[Total Revenue] ),  1),
+    ("Distance", NAMEOF ( '_Measures'[Total Distance] ), 2),
+    ("Duration", NAMEOF ( '_Measures'[Avg Duration] ),   3),
+    ("Tip",      NAMEOF ( '_Measures'[Total Tip] ),      4)
+}
+```
+
+`NAMEOF()` retorna referência tipada à medida — diferente de `"Total Trips"` (string) ou `[Total Trips]` (medida real). É o que permite o "switch" dinâmico no visual.
+
+Foram criados 2 Field Parameters:
+- **FP_Metric**: alterna entre 5 medidas (Trips, Revenue, Distance, Duration, Tip).
+- **FP_Dimension**: alterna entre 5 colunas categóricas (Borough, Zone, Vendor, Payment, Day Part).
+
+**Uso no visual**: arrasta `FP_Metric[FP_Metric]` no eixo Y e `FP_Dimension[FP_Dimension]` no eixo X. Dois slicers permitem combinações 5 × 5 = **25 análises possíveis com 1 visual**.
+
+### 6.3 UDFs (DAX User-Defined Functions)
+
+**O que é**: funções DAX nomeadas e reutilizáveis. Recurso preview do Power BI 2025+.
+
+**Sintaxe** (via DAX Query View, NOT via Modelagem ribbon):
+
+```dax
+DEFINE
+    FUNCTION ClassifyTripDuration = ( minutes ) =>
+    SWITCH (
+        TRUE (),
+        minutes < 5,   "Very Short",
+        minutes < 15,  "Short",
+        minutes < 30,  "Medium",
+        minutes < 60,  "Long",
+        minutes < 180, "Very Long",
+                       "Outlier"
+    )
+
+EVALUATE
+{ ClassifyTripDuration ( 25 ) }
+```
+
+**Gotcha 1 — Sem aspas no nome ao DEFINE**: a documentação inicial sugere `FUNCTION 'ClassifyTripDuration' = ...` mas isso retorna erro de sintaxe. O correto é **sem aspas** no DEFINE.
+
+**Gotcha 2 — Tipos não obrigatórios**: a anotação `: NUMERIC` que aparece em alguns docs não é válida em todas as builds. Mais seguro deixar **sem tipo** e deixar o DAX inferir.
+
+**Gotcha 3 — BLANK → 0 coercion**: em comparações numéricas, `BLANK < 5` é `TRUE` (porque BLANK é coerced para 0). Isso fez aparecer linhas vazias classificadas como "Very Short" / "Economy" na tabela de teste. Fix:
+
+```dax
+DEFINE
+    FUNCTION ClassifyTripDuration = ( minutes ) =>
+    IF (
+        ISBLANK ( minutes ),
+        BLANK (),
+        SWITCH ( TRUE (), ... )
+    )
+```
+
+**Como salvar**: depois do `EVALUATE` retornar resultado correto, clica em **"Atualizar o modelo com alterações"** no canto superior direito da DAX Query View. A função fica salva no modelo permanentemente.
+
+**Por que isso vale na entrevista**: UDFs são a evolução natural do DAX — antes você duplicava lógica em N medidas, agora você define em 1 lugar. Mesmo padrão de DRY que se vê em Python ou SQL com funções/procedures.
+
+As 3 UDFs criadas:
+
+| Função | Inputs | Output | Uso |
+|---|---|---|---|
+| `ClassifyTripDuration` | `minutes` | Very Short / Short / Medium / Long / Very Long / Outlier | Categoriza duração de trip |
+| `ClassifyFareTier` | `fare` | Economy / Standard / Premium / Luxury / Anomalous | Categoriza tier de tarifa |
+| `ComputeRevenuePerMile` | `revenue, distance` | `DIVIDE(rev, dist, 0)` | Métrica derivada com guard |
+
+### 6.4 Como Calc Group + Field Parameter + UDF se combinam
+
+Os 3 recursos são complementares, não substitutos:
+
+- **Field Parameter** escolhe **qual medida** está no visual.
+- **Calc Group** transforma **a medida escolhida** com Time Intelligence.
+- **UDF** encapsula **lógica reutilizável de classificação**.
+
+Exemplo combinado:
+1. Usuário arrasta `FP_Metric[FP_Metric]` num gráfico → escolhe `Total Revenue` no slicer.
+2. Adiciona `Time Analytics[Time Analytics]` em outro slicer → escolhe `YoY %`.
+3. Gráfico mostra: "YoY % de Total Revenue por Borough".
+4. Adiciona coluna `[Avg Fare Tier]` em outra visualização → mostra classificação textual.
+
+Tudo isso **sem criar uma única medida adicional**. É o que diferencia dashboard "código duplicado" de dashboard "modelo enxuto".
+
+---
+
+## 7. Glossário rápido
 
 | Termo | O que é |
 |---|---|
@@ -631,9 +903,21 @@ Trade-off: `dim_date` fica mais larga (~20 colunas), mas com apenas 1.096 linhas
 | **Medallion** | Padrão Bronze (raw) → Silver (clean) → Gold (modeled) |
 | **Schema drift** | Variação de schema entre fontes/lotes do mesmo dataset |
 | **DirectLake** | Modo Power BI que lê Delta direto do OneLake sem cópia |
+| **DirectQuery** | Modo Power BI que envia SQL ao banco a cada visual (não importa dados) |
+| **Composite Model** | Modelo PBI que combina local + remoto (DirectQuery + Live) |
 | **F-string** (Python) | `f"texto {variavel}"` — interpolação |
 | **List comprehension** | `[x for x in lista]` — lista construída inline |
 | **ThreadPoolExecutor** | Executa tarefas em paralelo em threads |
+| **Calc Group** | Grupo de calculation items que aplica time intelligence em qualquer medida via slicer |
+| **Calculation Item** | Item dentro de um Calc Group que define uma transformação DAX |
+| **Field Parameter** | Tabela "metadata" que permite escolher dinamicamente qual campo entra no visual |
+| **UDF (DAX)** | User-Defined Function — função DAX nomeada e reutilizável |
+| **SELECTEDMEASURE()** | Placeholder em Calc Items que vira a medida ativa no contexto do visual |
+| **NAMEOF()** | Função DAX que retorna referência tipada a coluna/medida (usado em Field Parameters) |
+| **Date Table** | Tabela explicitamente marcada como calendário, habilita Time Intelligence |
+| **Surrogate Key** | Chave artificial (`*_key`) gerada via ROW_NUMBER, substitui chave natural |
+| **Tabular Editor 2** | Ferramenta externa pra editar modelo semântico (Calc Groups, UDFs via TMDL) |
+| **TMDL** | Tabular Model Definition Language — formato de definição de modelo semântico |
 
 ---
 

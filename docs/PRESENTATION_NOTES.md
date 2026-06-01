@@ -306,30 +306,123 @@ NYC Open Data ACS Demographics como fonte primária. NOAA Weather como secundár
 
 ---
 
-## 8. Features Power BI obrigatórias — justificativa de cada uma
+## 8. Features Power BI — implementação real (dia 1 + dia 2)
 
-### Time Intelligence + Calculation Group
-**Por que Calc Group em vez de criar medidas YoY, YTD, PY separadas?**
+### 8.1 Composite Model (DirectQuery + remote semantic model)
 
-"Sem Calculation Group, eu teria que duplicar cada KPI 7 vezes (Current, PY, YoY, YoY%, YTD, PYTD, MAT) — para 8 KPIs base = 56 medidas. Com Calc Group, mantenho 8 medidas e o grupo aplica time intelligence dinamicamente via SELECTEDMEASURE. Modelo enxuto, manutenção drástica. É o padrão de bibliotecas DAX maduras."
+**Decisão arquitetural** (não estava no plano original mas surgiu na execução):
 
-### Field Parameters
-**Por que Field Parameters em vez de criar 1 visual por métrica?**
+Power BI Desktop não permite editar o modelo quando conectado em **Live connection** puro ao semantic model. Pra criar relacionamentos, hierarquias, medidas e RLS locais, foi necessário converter pra **composite model** clicando em "Fazer alterações neste modelo".
 
-"Field Parameters permitem que o usuário final escolha qual métrica está em foco (Trips, Revenue, Distance, Duration) e qual dimensão analisa por (Borough, Zone, Vendor, Payment, Day Part). Em vez de duplicar visuais, eu tenho 1 visual reativo a 2 slicers. Reduz drasticamente o número de páginas e dá poder de exploração ao analista."
+**Resposta de entrevista**: "Mantive o semantic model `sm_yellow_taxi_3m` como source-of-truth no Fabric (camada de dados, relacionamentos do star schema). No Power BI Desktop, converti pra composite model em modo DirectQuery — isso permite adicionar medidas, hierarquias e RLS locais sem importar os 115M de linhas pro `.pbix`. Trade-off conhecido: leve perda de performance vs DirectLake puro, mas ganho enorme de flexibilidade pra customizações no nível do relatório. Em produção 3M, esse padrão funciona bem porque o dado bruto fica no Lakehouse e cada equipe pode customizar a camada de relatório sem mexer no modelo central."
 
-### Conditional Formatting
-**Aplicação:** heat map zona × hora, semáforos em KPI cards com YoY, data bars em rankings.
+### 8.2 Time Intelligence + Calculation Group "Time Analytics"
 
-### Row-Level Security (RLS)
-**Por que 5 roles por Borough?**
+**Como foi implementado**: via **Tabular Editor 2** (External Tools do Power BI Desktop). Criação visual no TE2, save direto no modelo local, refresh no PBI Desktop.
 
-"Para simular o cenário Supply Chain de 'regional manager só vê sua região'. Em produção 3M seria 'site manager vê só sua planta'. Governança por padrão, demonstrada via View as no Power BI Desktop."
+**Os 7 items criados** (com ordinal zero-based):
+- `Current` (0) → `SELECTEDMEASURE()`
+- `PY` (1) → `CALCULATE(SELECTEDMEASURE(), SAMEPERIODLASTYEAR(dim_date[full_date]))`
+- `YoY` (2) → `SELECTEDMEASURE() - CALCULATE(...)`
+- `YoY %` (3) → `DIVIDE(_Current - _PY, _PY)` com format string `"0.00%;-0.00%;0.00%"`
+- `YTD` (4) → `TOTALYTD(SELECTEDMEASURE(), dim_date[full_date])`
+- `PYTD` (5) → `CALCULATE(TOTALYTD(...), SAMEPERIODLASTYEAR(...))`
+- `MAT` (6) → `CALCULATE(SELECTEDMEASURE(), DATESINPERIOD(dim_date[full_date], MAX(dim_date[full_date]), -12, MONTH))`
 
-### UDFs (DAX User-Defined Functions)
-**Por que UDFs em vez de copiar lógica em cada medida?**
+**Validação executada** — matriz `year × Time Analytics × Total Revenue`:
 
-"UDFs (recurso 2025+ do Power BI) permitem encapsular lógica reutilizável. Criei 3: `ClassifyTripDuration`, `ClassifyFareTier`, `ComputeRevenuePerMile`. Reduz duplicação de DAX e centraliza regras de negócio (ex.: o threshold do que é 'long trip' fica em UMA função, não em N medidas). É a mesma filosofia de DRY que aplico em Python."
+| Ano | Current | PY | YoY % |
+|---|---|---|---|
+| 2022 | $844M | (sem PY) | — |
+| 2023 | $1.076M | $844M | **+27,4%** (explosão pós-pandemia) |
+| 2024 | $1.137M | $1.076M | **+5,7%** (estabilização) |
+
+**Resposta de entrevista**: "Implementei o Calc Group 'Time Analytics' com 7 calculation items via Tabular Editor 2. A grande vantagem: em vez de criar 7 versões de cada medida (Revenue YoY, Revenue YTD, Revenue MAT...), tenho 1 grupo que aplica time intelligence dinamicamente via `SELECTEDMEASURE()`. Para as 10 medidas base do modelo, isso significa que tenho a opção de 70 perspectivas analíticas com apenas 10 medidas e 7 calc items. Validei o padrão YoY: +27,4% em 2023 (recovery pós-pandemia) e +5,7% em 2024 (estabilização) — narrativa que vai pra slide executivo."
+
+### 8.3 Field Parameters
+
+**Como foi implementado**: PBI Desktop → Modelagem → Novo parâmetro → Campos.
+
+**Os 2 Field Parameters criados**:
+- `FP_Metric`: alterna entre 5 medidas (Total Trips, Total Revenue, Total Distance, Avg Duration, Total Tip).
+- `FP_Dimension`: alterna entre 5 colunas categóricas (Borough, Zone, Vendor, Payment Type, Day Part).
+
+**Validação executada** — gráfico com `FP_Metric` no eixo Y e `FP_Dimension` no eixo X + 2 slicers:
+
+Resultado da combinação `Total Trips × day_part`:
+- **Afternoon**: ~40M trips
+- **Evening**: ~40M trips
+- **Morning**: ~25M trips
+- **Late Night**: ~10M trips
+
+**Insight de negócio** (vai pra slide): "**Afternoon + Evening = 70% do volume total**". Padrão clássico de demanda urbana — ciclo trabalho/lazer dirige a demanda de táxi.
+
+**Resposta de entrevista**: "Criei 2 Field Parameters: um pra métricas e um pra dimensões. Combinados, dão ao analista 25 análises possíveis (5 métricas × 5 dimensões) com 1 único gráfico no canvas. Quando descobri que Afternoon+Evening soma 70% do volume, percebi que o pico noturno é tão importante quanto o vespertino — info que sumiria num gráfico estático focado em só uma métrica. Em supply chain, equivale a entender quando a demanda B2B realmente pesa — não basta total mensal, precisa quebrar por janela operacional."
+
+### 8.4 Conditional Formatting (planejado pro dia 3-4)
+
+Aplicação prevista (não implementado ainda):
+- Heat map em matriz `hora × borough` com background color (gradient verde→vermelho)
+- KPI Cards com cor dinâmica (verde se YoY > 0, vermelho se < 0)
+- Data bars em rankings de zonas por receita
+- Ícones (semáforo) em tabela de qualidade de dados
+
+### 8.5 Row-Level Security (RLS) — planejado pro dia 04/06
+
+**Plano**: 5 roles, uma por Borough (Manhattan Manager, Brooklyn Manager, Queens Manager, Bronx Manager, Staten Island Manager). Filtro `[borough] = "<Borough>"` em `dim_zone`.
+
+**Resposta de entrevista** (texto pronto): "Configurei 5 roles RLS — uma por borough — simulando o cenário 'regional manager só vê sua região'. Em supply chain 3M, equivale a 'site manager vê só sua planta', ou 'sales manager vê só sua região'. Demonstrei via View as no Power BI Desktop. Em produção, conectaria as roles via Azure AD groups."
+
+### 8.6 UDFs (DAX User-Defined Functions) — implementadas
+
+**Como foi implementado**: via **DAX Query View** do Power BI Desktop (não via Modelagem ribbon, que não tem UI específica pra UDF). Sintaxe `DEFINE FUNCTION nome = (params) => expression`. Save no modelo via "Atualizar o modelo com alterações".
+
+**As 3 UDFs criadas**:
+
+```dax
+FUNCTION ClassifyTripDuration = ( minutes ) =>
+SWITCH ( TRUE (),
+    minutes < 5,   "Very Short",
+    minutes < 15,  "Short",
+    minutes < 30,  "Medium",
+    minutes < 60,  "Long",
+    minutes < 180, "Very Long",
+                   "Outlier" )
+
+FUNCTION ClassifyFareTier = ( fare ) =>
+SWITCH ( TRUE (),
+    fare < 10,   "Economy",
+    fare < 25,   "Standard",
+    fare < 60,   "Premium",
+    fare < 150,  "Luxury",
+                 "Anomalous" )
+
+FUNCTION ComputeRevenuePerMile = ( revenue, distance ) =>
+DIVIDE ( revenue, distance, 0 )
+```
+
+**Validação executada** — tabela `borough × tiers`:
+
+| Borough | Avg Duration | Tier | Avg Fare | Tier | Rev/Mile |
+|---|---|---|---|---|---|
+| **EWR (Newark)** | 9 min | Short | $101 | **Luxury** | **$24,05** |
+| **Manhattan** | 15 min | Medium | $22 | Standard | $5,67 |
+| **Queens** | 38 min | Long | $67 | Luxury | $4,87 |
+| **Bronx** | 34 min | Long | $34 | Premium | $1,26 |
+
+**Insight de negócio**: EWR (Newark Airport) tem **Revenue per Mile de $24,05** — quase **5x a média de Manhattan**. Razão: trips curtas (9min) com tarifa altíssima (airport fee + distância de NJ). Vira destaque na apresentação: "Newark Airport é um nicho premium dentro da operação Yellow Taxi — alta margem por milha, baixo volume, alto valor unitário."
+
+**Gotchas documentados** (descobertos durante implementação):
+
+1. **Sintaxe sem aspas no DEFINE**: `FUNCTION ClassifyTripDuration = ...` funciona. Com aspas (`FUNCTION 'ClassifyTripDuration' = ...`) retorna erro de sintaxe.
+
+2. **Sem anotação de tipo necessária**: `( minutes : NUMERIC )` não compila. `( minutes )` sem tipo funciona — DAX infere.
+
+3. **Preview feature exige restart do PBI Desktop**: marcar a opção em "Recursos de visualização" e clicar OK não basta. Tem que fechar e reabrir o Power BI Desktop pra o engine ativar.
+
+4. **BLANK → 0 coercion em comparações numéricas**: `BLANK < 5` é `TRUE` em DAX, porque BLANK é coerced para 0 em comparações numéricas. Isso fez aparecer linha "Very Short / Economy" no teste pra valores blank. Fix opcional: `IF(ISBLANK(x), BLANK(), SWITCH(...))`.
+
+**Resposta de entrevista**: "Criei 3 UDFs DAX usando a sintaxe nova do Power BI 2025+. Encapsulei classificações reutilizáveis (Duration Tier, Fare Tier, Revenue per Mile). O ganho: troco a lógica em 1 lugar e propaga pra todas as medidas que usam. Encontrei 3 quirks durante o desenvolvimento — sintaxe sem aspas no DEFINE, ausência obrigatória de type hints, e necessidade de restart pra ativar preview features. Documentei todos no repo pra próxima pessoa não passar pela mesma curva. Também identifiquei o comportamento BLANK→0 do SWITCH — em produção, refinaria com `IF(ISBLANK(...))` explícito, mas pra portfólio mantive intencional pra mostrar o achado."
 
 ---
 

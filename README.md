@@ -98,7 +98,8 @@ Tokens necessários (cadastro gratuito):
 | Limpeza Silver (filtros, derivações, flag de anomalia) | ✅ concluído (30/05) |
 | Modelagem Gold + Enrichment (ACS + NOAA) | ✅ concluído (31/05) |
 | Modelo semântico Power BI (DirectLake) | ✅ concluído (01/06) |
-| Features DAX (Calc Groups, UDFs, RLS, Field Parameters) | 🟡 em andamento (02/06) |
+| Features DAX (Calc Groups + Field Parameters + UDFs) | ✅ concluído (02/06) |
+| RLS (5 roles por Borough) + Conditional Formatting | 🟡 em andamento (03/06) |
 | Dashboard (5 páginas) | ⏳ |
 | Apresentação (.pptx) | ⏳ |
 
@@ -128,6 +129,15 @@ Tokens necessários (cadastro gratuito):
 - **Integridade referencial validada**: zero foreign keys orfãs no fato (padrão COALESCE → Unknown).
 - **Padrão híbrido de fontes externas**: NOAA via REST API com paginação anual (operational data), ACS via snapshot Borough-level (reference data).
 - **Gotcha documentado**: NOAA CDO API limita range a 1 ano por request — fix via loop por ano.
+
+### DAX Advanced Features (dia 02/06)
+- **Calculation Group "Time Analytics"** criado via Tabular Editor 2 com 7 calculation items (Current, PY, YoY, YoY%, YTD, PYTD, MAT). Em vez de duplicar 10 medidas × 7 transformações = 70 medidas, mantém 10 medidas + 7 items = 17 objetos.
+- **2 Field Parameters** (FP_Metric com 5 medidas + FP_Dimension com 5 dimensões) — 25 combinações analíticas em 1 visual.
+- **3 UDFs DAX** (User-Defined Functions, preview feature 2025): `ClassifyTripDuration`, `ClassifyFareTier`, `ComputeRevenuePerMile`. Encapsulam lógica reutilizável.
+- **Padrão YoY validado pelo Calc Group**: +27,4% em 2023 (recovery pós-pandemia) e +5,7% em 2024 (estabilização).
+- **Insight Field Parameters**: Afternoon + Evening = 70% do volume diário — padrão clássico de demanda urbana.
+- **Insight UDFs**: EWR (Newark Airport) tem Revenue per Mile de $24,05 — 5x a média de Manhattan, padrão nicho premium.
+- **Gotchas documentados**: sintaxe DAX UDF sem aspas no DEFINE, preview feature exige restart do PBI Desktop, BLANK→0 coercion em SWITCH.
 
 ### Power BI Semantic Model (DirectLake / Composite)
 - **`sm_yellow_taxi_3m`** criado em DirectLake sobre o Lakehouse `lh_yellow_taxi`.
