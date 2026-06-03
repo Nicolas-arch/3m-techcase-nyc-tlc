@@ -41,9 +41,11 @@ A entrega cobre todo o fluxo:
 │   ├── ARCHITECTURE.md         # arquitetura técnica
 │   ├── CONVENTIONS.md          # convenções de nomes e código
 │   ├── DATA_SOURCES.md         # fontes de dados e como acessá-las
-│   ├── DATA_DICTIONARY.md      # dicionário das tabelas Gold (será preenchido)
+│   ├── DATA_DICTIONARY.md      # dicionário das tabelas Gold
 │   ├── PRESENTATION_NOTES.md   # decisões técnicas + storytelling p/ apresentação
-│   └── CODE_EXPLAINED.md       # material de apoio (didático) do código
+│   ├── CODE_EXPLAINED.md       # material de apoio (didático) do código
+│   ├── CHECKPOINT_REVIEW.md    # review de meio-projeto (dia 4)
+│   └── WIREFRAMES.md           # layout das páginas do dashboard Power BI
 ├── notebooks/                  # exportados do Fabric
 │   ├── 01_bronze_ingest.ipynb     # ✅ ingestão + persistência Delta
 │   ├── 02_silver_clean.ipynb      # ✅ filtros de qualidade + derivações
@@ -99,9 +101,11 @@ Tokens necessários (cadastro gratuito):
 | Modelagem Gold + Enrichment (ACS + NOAA) | ✅ concluído (31/05) |
 | Modelo semântico Power BI (DirectLake) | ✅ concluído (01/06) |
 | Features DAX (Calc Groups + Field Parameters + UDFs) | ✅ concluído (02/06) |
-| RLS (5 roles por Borough) + Conditional Formatting | 🟡 em andamento (03/06) |
-| Dashboard (5 páginas) | ⏳ |
-| Apresentação (.pptx) | ⏳ |
+| RLS (6 roles) + Theme corporativo + Conditional Formatting | ✅ concluído (03/06) |
+| Página 1 — Executive Overview (final, EN, hierarquia cromática) | ✅ concluído (04/06) |
+| Páginas 2-5 do dashboard | 🟡 em andamento (04-05/06) |
+| Apresentação (.pptx) | ⏳ (05-07/06) |
+| Entrega final + ensaios | ⏳ (08/06) |
 
 ## Highlights do desenvolvimento
 
@@ -149,14 +153,37 @@ Tokens necessários (cadastro gratuito):
 - **17 colunas técnicas ocultas** (surrogate keys + business IDs) — padrão Kimball.
 - **Validação cruzada**: matriz Power BI bate 100% com o business sanity query rodado no Gold (Manhattan 2024: 35,27M trips, US$ 844M; total 2024: 39,7M trips, US$ 1,14B).
 
+### RLS, Theme & Conditional Formatting (dia 03/06)
+- **6 RLS roles** configuradas no semantic model Fabric: 5 Borough Managers (Manhattan, Brooklyn, Queens, Bronx, Staten Island) + 1 Global Manager.
+- **`powerbi/theme.json` corporativo** aplicado (paleta azul navy `#1F3864`).
+- **Página "Conditional Format Lab"** (interna) com 4 técnicas validadas: cor dinâmica via medida DAX, heat map, data bars, ícones semáforo.
+- **Gotcha documentado**: Composite Model NÃO mostra roles remotas em "Exibir como" do PBI Desktop — solução demo via medidas DAX equivalentes (`Manhattan Manager View = CALCULATE([Total Revenue], dim_zone[borough]="Manhattan")`).
+
+### Página 1 — Executive Overview (dia 04/06)
+- **Canvas 1600×900px** com header navy + 5 KPI cards + trendline + borough chart + tabela Top 10 OD lanes.
+- **Hierarquia cromática 2+3**: 2 cards-sinalizadores (Revenue + Anomaly Rate, com cor dinâmica via DAX) + 3 cards informativos neutros.
+- **Internacionalização EN**: todos os subtítulos dinâmicos em inglês (apresentação global 3M).
+- **KPI hero substituído**: removido YoY Growth (redundante com subtitle do Revenue card) → adicionado **AVG LEAD TIME (min) = 17,56** como KPI universal de supply chain.
+- **8 medidas DAX novas**: `Anomalous Trips`, `Anomaly Rate`, `Anomaly Color` (refatorada), `Anomaly Subtitle`, `Avg Lead Time (min)`, `Lead Time Subtitle`, `Trips Subtitle`, `Fare Subtitle`, `Revenue Subtitle` — todas seguindo padrão MAX(year) para YoY robusto em qualquer contexto.
+- **3 gotchas DAX críticos descobertos e documentados** (entrevista-worthy):
+  - DAX não faz coerção INT ↔ BOOL (flag `is_anomalous` precisa `= 1`, não `= TRUE()`).
+  - `FORMAT()` respeita locale do client — sempre forçar `"en-US"` como 3º argumento em modelos globais.
+  - Padrão `MAX(year)` é mais robusto que `DATEADD()` para YoY em contexto multi-ano.
+- **3 insights de negócio novos**:
+  - Fare boom 2022→2023 (+33,1%) — análogo a peak season surcharge em supply chain.
+  - Fare plateau 2024 (-1,0%) — revenue growth via volume, não preço (saudável).
+  - **Lead Time variability < 1% em 3 anos** (17,46→17,59→17,63 min) — KPI gold para S&OP global, slide próprio na apresentação.
+
 Decisões técnicas e respostas-padrão para apresentação em [`docs/PRESENTATION_NOTES.md`](docs/PRESENTATION_NOTES.md).
 Material didático do código em [`docs/CODE_EXPLAINED.md`](docs/CODE_EXPLAINED.md).
+Layout do dashboard em [`docs/WIREFRAMES.md`](docs/WIREFRAMES.md).
 
 ## Critérios do teste
 
 - ✅ Escopo: Yellow Taxi 2022–2024
 - ✅ Fonte externa correlacionada (ACS Demographics + NOAA Weather)
-- ✅ Features obrigatórias planejadas: Time Intelligence, Field Parameters, Calculation Groups, Conditional Formatting, RLS, UDFs
+- ✅ Features obrigatórias: Time Intelligence ✅, Field Parameters ✅, Calculation Groups ✅, Conditional Formatting ✅, RLS ✅, UDFs DAX ✅
+- 🟡 Dashboard 5 páginas: Página 1 ✅, Páginas 2-5 em andamento
 
 ## Autor
 

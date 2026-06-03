@@ -142,15 +142,22 @@ fix: handle null passenger_count in silver
 3m-techcase-nyc-tlc/
 ├── README.md
 ├── docs/
-│   ├── ARCHITECTURE.md
-│   ├── CONVENTIONS.md
-│   ├── DATA_SOURCES.md
-│   └── DATA_DICTIONARY.md
-├── notebooks/
-├── sql/
+│   ├── ARCHITECTURE.md         # arquitetura técnica
+│   ├── CONVENTIONS.md          # este documento
+│   ├── DATA_SOURCES.md         # fontes de dados e como acessá-las
+│   ├── DATA_DICTIONARY.md      # dicionário das tabelas Gold
+│   ├── PRESENTATION_NOTES.md   # decisões técnicas + storytelling p/ apresentação
+│   ├── CODE_EXPLAINED.md       # material de apoio didático do código
+│   ├── CHECKPOINT_REVIEW.md    # review de meio-projeto
+│   └── WIREFRAMES.md           # layout das páginas do dashboard Power BI
+├── notebooks/                  # exportados do Fabric (Bronze/Silver/Gold)
+├── sql/                        # scripts SQL auxiliares
 ├── powerbi/
-├── python_fallback/
-├── images/
+│   ├── 3m_techcase.pbix
+│   ├── theme.json
+│   └── measures_reference.md
+├── python_fallback/            # plano B local (Python + Polars)
+├── images/                     # diagramas e screenshots
 ├── .env.example
 ├── .gitignore
 ├── requirements.txt

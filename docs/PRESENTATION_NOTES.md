@@ -267,6 +267,55 @@ Isso é **boa prática Kimball** — toda dimensão tem uma linha "Unknown" para
 
 ---
 
+## 4.5 Insights descobertos via Conditional Formatting (dia 03/06)
+
+Ao validar conditional formatting com visuais reais (data bars + ícones de semáforo), descobri 2 patterns que vão estruturar a narrativa executiva da apresentação.
+
+### Insight 1 — Aeroportos respondem por 46% da receita do top 10 zonas
+
+Ao rankear `dim_zone[zone_name]` por `[Total Revenue]` com Data Bars, o top 10 do projeto inteiro mostra:
+
+| Rank | Zone | Total Revenue |
+|---|---|---|
+| 1 | JFK Airport | $425M |
+| 2 | LaGuardia Airport | $222M |
+| 3 | Midtown Center | $120M |
+| 4 | Upper East Side South | $104M |
+| 5 | Times Sq/Theatre District | $100M |
+| 6 | Upper East Side North | $96M |
+| 7 | Penn Station/Madison Sq West | $90M |
+| 8 | Midtown East | $89M |
+| 9 | Lincoln Square East | $78M |
+| 10 | Midtown North | $77M |
+| **Total top 10** | | **$1.404M** |
+
+**JFK + LaGuardia = $647M = 46% do top 10 zonas.**
+
+**Storytelling para slide**: "Yellow Taxi tem 265 zonas, mas só 2 (JFK + LaGuardia) respondem por 46% da receita do top 10. Em supply chain, equivale a ter 2 lanes que carregam quase metade do EBITDA — risco de concentração que pede contingência. Decisões estratégicas: onde investir em capacidade adicional, onde redirecionar fluxo em caso de disrupção, qual diversificação reduz dependência."
+
+**Por que isso importa pro 3M**: padrão concentração ABC clássico, com os principais hubs do supply chain transportando o grosso do valor. Discussão típica de risk management.
+
+### Insight 2 — Anomaly Rate revela "core operations vs exception lanes"
+
+Ao aplicar ícones de semáforo na coluna `[Anomaly Rate %]` por borough, a distribuição revelou padrão muito claro:
+
+| Borough | Anomaly Rate | Volume contexto |
+|---|---|---|
+| Manhattan | **0,1%** 🟢 | 95% do volume — core operations |
+| Bronx | 0,3% 🟢 | Volume médio |
+| Queens | 0,3% 🟢 | Médio (puxado pelos aeroportos) |
+| Brooklyn | 0,3% 🟢 | Médio |
+| Unknown | 0,6% 🟢 | Baixo volume |
+| Staten Island | 1,0% 🟡 | Baixíssimo volume |
+| EWR (Newark) | **16,7%** 🔴 | Trips longas, complexas |
+| N/A | **23,2%** 🔴 | Outside-NYC, dados ruins |
+
+**Storytelling para slide**: "Manhattan core opera em 99,9% de qualidade. Em zonas de fronteira (EWR, N/A), anomaly rate explode pra 17-23%. É o padrão clássico de 'core operations vs exception lanes' — operação consolidada vs operação de exceção. Em supply chain 3M, equivale a 'main shipping lanes vs special-case routes' — processo deve ser diferente, contratos diferentes, SLA diferente. Mostra que one-size-fits-all não funciona em operação de grande escala."
+
+**Resposta de entrevista pronta**: "Ao construir o dashboard, percebi via conditional formatting que anomaly rate não é uniforme — Manhattan core opera a 0,1%, mas EWR e zonas fronteira chegam a 23%. Isso me levou a propor uma narrativa de 'core vs exception operations' que vou explorar nas próximas páginas. Mostra que dashboard bem feito gera **questões novas**, não só responde às existentes."
+
+---
+
 ## 5. DirectLake vs Import vs DirectQuery
 
 ### Decisão
@@ -449,6 +498,69 @@ Repo GitHub público criado e populado desde antes da primeira linha de código 
 
 ### Resposta longa (entrevista)
 "Tratei o teste como projeto de produção. Repo público no GitHub desde o dia 1, conventional commits, branches limpas, README com badges, ARCHITECTURE.md, CONVENTIONS.md, DATA_SOURCES.md. Em um time como o de vocês — global, distribuído — versionamento desde o primeiro commit é o que separa código de scriptzinho. Quando o pipeline crescer ou outra pessoa precisar manter, todo o contexto está lá."
+
+---
+
+## 11. Página 1 — refinamentos finais e narrativa fechada (dia 4)
+
+### Decisão
+Página 1 (Executive Overview) finalizada no dia 4 após 3 polishes obrigatórios + 1 substituição estrutural de KPI. Tela passou de "funcional" para "client-ready" via micro-decisões de UX, cor semântica dinâmica e internacionalização para inglês (apresentação global).
+
+### Os 4 ajustes aplicados no dia 4
+
+**Polish 1 — Anomaly card com cor dinâmica + subtítulo dinâmico**
+- Antes: valor "0,16%" preto, subtítulo estático "180k flagged • Saudável".
+- Depois: valor verde (via `Anomaly Color`), subtítulo via `Anomaly Subtitle` que reage ao threshold (Healthy <3%, Warning <10%, Critical ≥10%).
+- Razão: consistência semântica com o card de Revenue (que já era colorido). 2 cards-sinalizadores + 3 cards informativos.
+
+**Polish 2 — Filtro N/A na tabela Top 10 O-D**
+- Antes: linha "N/A → N/A" aparecia entre as top 10 (ruído de dados).
+- Depois: filtro visual `borough <> "N/A"` AND `dropoff_borough <> "N/A"`.
+- Razão: dashboard executivo não pode mostrar lixo de pipeline. Pareceria que a engenharia não foi cuidadosa.
+
+**Polish 3 — Altura da tabela ampliada**
+- Antes: 175px de altura, só 5 das 10 linhas visíveis (violação do "Top 10" prometido).
+- Depois: 270px, todas as 10 linhas sem scroll.
+- Razão: visual coerente com o título.
+
+**Extra A — KPI "YoY Growth" substituído por "AVG LEAD TIME (min)"**
+- Antes: card YoY Growth = 5,7% (redundante com o subtítulo do card de Revenue, que já dizia "+5,7% vs 2023").
+- Depois: card Avg Lead Time = 17,56 min (média ponderada dos 3 anos).
+- Razão: **Lead Time é o KPI hero universal de supply chain**. Conecta diretamente com a narrativa de Yellow Taxi como cadeia urbana — trip = shipment, duration = lead time. Para a vaga da 3M (Enterprise Supply Chain Analytics), esse KPI substitui um indicador redundante por um indicador estruturalmente alinhado com o domínio.
+
+### Internacionalização (PT → EN)
+Todos os subtítulos e textos dinâmicos passaram para inglês:
+- "Volume 2022–2024", "Average ticket", "Average trip duration", "Healthy/Warning/Critical".
+- `FORMAT(..., "+0.0%;-0.0%", "en-US")` — locale forçado, padrão recomendado pela Microsoft para modelos globais (multi-país). Resolveu o bug onde o ponto era interpretado como separador de milhar em locale PT-BR.
+
+### Hierarquia visual cromática (decisão de design)
+- **Cards-sinalizadores (coloridos)**: Total Revenue (verde via YoY Color), Anomaly Rate (verde/amarelo/vermelho via Anomaly Color).
+- **Cards informativos (neutros)**: Total Trips, Avg Fare per Trip, Avg Lead Time — texto preto.
+- Razão: dashboards executivos 2025 (PwC, KPMG, BCG) seguem o padrão "1-2 sinalizadores + 3-4 neutros". 5 cards todos coloridos vira "árvore de Natal" — o olho não sabe onde focar primeiro.
+
+### 3 insights novos descobertos na finalização (ouro pra apresentação)
+
+**Insight 1 — Fare boom 2022→2023 (+33,1%)**
+Avg Fare saltou de $21,74 → $28,94 em 1 ano. Causa: NYC TLC implementou aumento de congestion surcharge em 2022 com efeito acumulado em 2023.
+- **Tradução supply chain**: efeito equivalente a "peak season surcharge" — sobretaxa logística aplicada uniformemente eleva custo unitário sem alterar volume de remessas.
+- **Slide narrative**: "Em 2023, a operação experimentou um choque tarifário de +33% no ticket médio — análogo a um peak season surcharge em supply chain. Esse choque foi absorvido e estabilizou em 2024."
+
+**Insight 2 — Fare plateau 2024 (-1,0%)**
+Avg Fare 2024 = $28,64 vs 2023 = $28,94. Estabilização pós-choque.
+- **Tradução supply chain**: revenue growth via volume expansion, não via price increase. Crescimento saudável e sustentável — em supply chain, o oposto seria "passar inflação pro cliente", que aumenta receita mas erode market share.
+- **Slide narrative**: "2024 mostra estabilização tarifária. O crescimento de receita de +5,7% veio inteiramente do volume — sinal de demand recovery genuíno, não de inflação repassada."
+
+**Insight 3 — Lead Time variability < 1% (GOLD — slide próprio merecido)**
+Avg Lead Time: 17,46 min (2022) → 17,59 min (2023) → 17,63 min (2024). Variação de 0,17 min em 3 anos.
+- **Tradução supply chain**: lead time previsível habilita forecast confiável, reduz necessidade de safety stock, viabiliza takt time planning. É exatamente o tipo de KPI que um S&OP global vê com prioridade.
+- **Slide narrative**: "Em 3 anos, o lead time médio variou menos de 1%. Em supply chain, essa estabilidade é o que separa uma operação madura de uma reativa: forecast confiável, safety stock otimizado, takt time previsível. Para vocês na 3M Global Supply Chain, esse é o KPI que mais diz sobre maturidade operacional."
+
+### Resposta de entrevista (Q: "Por que substituiu YoY Growth por Lead Time?")
+"Identifiquei redundância: o card YoY Growth duplicava informação que já estava no subtítulo do Revenue card. Decidi trocar por um KPI estruturalmente alinhado com a narrativa do projeto — Yellow Taxi como cadeia de suprimentos urbana, onde trip = shipment e duration = lead time. O Avg Lead Time tem o bônus de ser um dos indicadores mais valorizados em supply chain global: lead time estável habilita forecast confiável e otimização de safety stock. É um KPI que conecta diretamente com a realidade do dia-a-dia de quem vai apresentar esse dashboard internamente na 3M."
+
+### Storytelling visual completo da Página 1 (slide de overview)
+
+> "A Página 1 entrega a primeira leitura executiva em 30 segundos: receita acumulada de $3,06 Bi crescendo +5,7%, 116 milhões de viagens, ticket médio estabilizado em $26,42 após o choque tarifário de 2023, lead time previsível em 17,56 min e taxa de anomalia operacional em 0,16% — toda a rede está saudável. A trendline confirma um padrão de recovery em três ondas. A concentração da receita em Manhattan (~75%) revela uma curva ABC clara, e o Top 10 OD lanes mostra JFK e LaGuardia como hubs premium dominantes. Cor verde sinaliza saúde — Revenue e Anomaly Rate são os dois cards-sinalizadores; os três do meio são informativos. Toda a tela responde aos filtros Year/Month/Time View e respeita as 6 RLS roles configuradas no semantic model."
 
 ---
 
