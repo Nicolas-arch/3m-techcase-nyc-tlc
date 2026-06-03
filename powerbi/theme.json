@@ -1,0 +1,133 @@
+{
+  "name": "3M TechCase — Yellow Taxi Analytics",
+  "dataColors": [
+    "#1F3864",
+    "#2E75B6",
+    "#5B9BD5",
+    "#9DC3E6",
+    "#BDD7EE",
+    "#404040",
+    "#595959",
+    "#808080",
+    "#22A06B",
+    "#D32F2F",
+    "#F29111",
+    "#7030A0"
+  ],
+  "background": "#FFFFFF",
+  "foreground": "#1F3864",
+  "tableAccent": "#1F3864",
+  "good": "#22A06B",
+  "neutral": "#F29111",
+  "bad": "#D32F2F",
+  "maximum": "#1F3864",
+  "center": "#5B9BD5",
+  "minimum": "#BDD7EE",
+  "null": "#CCCCCC",
+  "textClasses": {
+    "title": {
+      "fontFace": "Segoe UI",
+      "fontSize": 18,
+      "color": "#1F3864"
+    },
+    "header": {
+      "fontFace": "Segoe UI Semibold",
+      "fontSize": 14,
+      "color": "#404040"
+    },
+    "label": {
+      "fontFace": "Segoe UI",
+      "fontSize": 11,
+      "color": "#595959"
+    },
+    "callout": {
+      "fontFace": "Segoe UI Light",
+      "fontSize": 42,
+      "color": "#1F3864"
+    }
+  },
+  "visualStyles": {
+    "*": {
+      "*": {
+        "background": [
+          {
+            "show": true,
+            "color": { "solid": { "color": "#FFFFFF" } },
+            "transparency": 0
+          }
+        ],
+        "border": [
+          {
+            "show": true,
+            "color": { "solid": { "color": "#E0E0E0" } },
+            "radius": 4
+          }
+        ],
+        "title": [
+          {
+            "show": true,
+            "fontColor": { "solid": { "color": "#1F3864" } },
+            "fontSize": 14,
+            "fontFamily": "Segoe UI Semibold",
+            "alignment": "left"
+          }
+        ]
+      }
+    },
+    "card": {
+      "*": {
+        "categoryLabels": [
+          {
+            "fontSize": 10,
+            "color": { "solid": { "color": "#595959" } },
+            "fontFamily": "Segoe UI"
+          }
+        ],
+        "labels": [
+          {
+            "fontSize": 32,
+            "color": { "solid": { "color": "#1F3864" } },
+            "fontFamily": "Segoe UI Light"
+          }
+        ]
+      }
+    },
+    "barChart": {
+      "*": {
+        "dataPoint": [
+          {
+            "defaultColor": { "solid": { "color": "#2E75B6" } }
+          }
+        ]
+      }
+    },
+    "columnChart": {
+      "*": {
+        "dataPoint": [
+          {
+            "defaultColor": { "solid": { "color": "#2E75B6" } }
+          }
+        ]
+      }
+    },
+    "lineChart": {
+      "*": {
+        "dataPoint": [
+          {
+            "defaultColor": { "solid": { "color": "#1F3864" } }
+          }
+        ]
+      }
+    },
+    "tableEx": {
+      "*": {
+        "grid": [
+          {
+            "gridHorizontal": true,
+            "gridVerticalColor": { "solid": { "color": "#E0E0E0" } }
+          }
+        ]
+      }
+    }
+  }
+}
