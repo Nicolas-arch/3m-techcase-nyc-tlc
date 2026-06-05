@@ -1466,11 +1466,69 @@ Três gotchas que apareceram nesse caminho:
 
 ---
 
+## 11. DAX da Página 3 — Operations & Cost (dia 8)
+
+### 11.1 Medidas de eficiência e custo
+```dax
+Avg Distance (mi)     = DIVIDE ( [Total Distance], [Total Trips] )
+Avg Speed (mph)       = CALCULATE ( AVERAGE ( fact_trips[avg_speed_mph] ), fact_trips[is_anomalous] = 0 )
+Avg Cost per Trip ($) = DIVIDE ( SUM ( fact_trips[total_amount] ), [Total Trips] )
+Cost per Mile ($)     = ComputeRevenuePerMile ( [Total Revenue], [Total Distance] )   -- UDF ao vivo
+```
+- **`Avg Speed`** exclui anomalias (`is_anomalous = 0`) — senão viagens com speed >80 mph (erro de meter) inflam a média.
+- **`Avg Distance`** hoje inclui tudo (5,09 mi, +20,4% YoY): parte é tendência real (viagens mais longas pós-pandemia), parte pode ser outlier. Versão "limpa" = replicar o padrão do Speed.
+- **`Cost per Mile`** chama o UDF `ComputeRevenuePerMile` (`DIVIDE(rev, dist, 0)` com guard) — a feature UDF numa medida de produção, não de teste.
+
+### 11.2 Componentes da tarifa (composição)
+```dax
+Avg Base Fare = DIVIDE ( SUM ( fact_trips[fare_amount] ), [Total Trips] )
+Avg Tip       = DIVIDE ( SUM ( fact_trips[tip_amount] ),  [Total Trips] )
+Avg Tolls     = DIVIDE ( SUM ( fact_trips[tolls_amount] ),[Total Trips] )
+Avg Surcharges & Taxes =
+DIVIDE (
+    SUM ( fact_trips[extra_amount] ) + SUM ( fact_trips[mta_tax] )
+      + SUM ( fact_trips[improvement_surcharge] ) + SUM ( fact_trips[congestion_surcharge] )
+      + SUM ( fact_trips[airport_fee] ),
+    [Total Trips]
+)
+```
+As 4 somam ~$26,42 (= `Avg Cost per Trip`). Na barra empilhada mostram: ~69% base, ~19% surcharges/taxes, ~12% tip, tolls residual.
+
+### 11.3 Subtítulos (template YoY)
+K1 reaproveita `[Lead Time Subtitle]`; os outros 4 seguem o mesmo template trocando a medida base:
+```dax
+Avg Speed Subtitle =
+VAR _y = MAX ( dim_date[year] )
+VAR _cur = CALCULATE ( [Avg Speed (mph)], dim_date[year] = _y )
+VAR _py  = CALCULATE ( [Avg Speed (mph)], dim_date[year] = _y - 1 )
+RETURN IF ( ISBLANK ( _py ), "non-anomalous trips", "vs PY " & FORMAT ( DIVIDE ( _cur - _py, _py ), "+0.0%;-0.0%", "en-US" ) )
+```
+(idem `Avg Cost Subtitle` e `Cost per Mile Subtitle`.)
+
+### 11.4 `duration_class` — limites = UDF + resultado validado
+Coluna no Gold (regra do DirectLake em §10.4). Limites idênticos ao UDF `ClassifyTripDuration`: `<5 / <15 / <30 / <60 / <180 / else`, com guarda de NULL (`'0 · Unknown'`). Distribuição nos 115.756.175 (soma bateu): 78% em 5–30 min, Outlier 0,09%, zero nulos.
+
+### 11.5 Ajustes de leitura (gotchas de visualização, dia 8)
+1. **Scatter esticado por outliers** — média de distância por zona distorcida por viagens anômalas (eixo ia a 300mi). Fix: filtro `is_anomalous = 0` no visual + cap do eixo X.
+2. **Composição ilegível com barras separadas** — escalas muito diferentes. Fix: **barra empilhada** (4 medidas em Valores, categoria vazia → 1 barra, 4 segmentos).
+3. **Título de card sobrando da Página 2** — ao copiar cards, o título não atualiza junto da medida. Sempre conferir título + medida + subtítulo.
+
+### 11.6 Resumo das medidas da Página 3
+| Medida | Fórmula-chave | Card/Visual |
+|---|---|---|
+| Avg Distance (mi) | DIVIDE(Total Distance, Total Trips) | K2 |
+| Avg Speed (mph) | AVERAGE(avg_speed_mph) sem anomalias | K3 |
+| Avg Cost per Trip ($) | SUM(total_amount)/Trips | K4 |
+| Cost per Mile ($) | UDF ComputeRevenuePerMile | K5 |
+| Avg Base Fare / Tip / Tolls / Surcharges & Taxes | SUM(x)/Trips | V3 composição |
+| duration_class (Gold) | CASE = UDF ClassifyTripDuration | V2 histograma |
+
+---
+
 ## Próximos passos do material
 
-A medida que o projeto avançar (páginas 3-5 do dashboard), este documento vai ganhar mais seções:
+A medida que o projeto avançar (páginas 4-5 do dashboard), este documento vai ganhar mais seções:
 
-- **DAX da Página 3** — histograma, scatter measures, breakdown de tarifa
 - **DAX da Página 4** — correlação demanda × demographics (ACS)
 - **M / Power Query explained** — se precisarmos de transformações no nível do PBI
 - **Diagramas visuais** — exportados do draw.io
