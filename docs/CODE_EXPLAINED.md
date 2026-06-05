@@ -12,6 +12,9 @@
 6. [DAX Advanced (dia 02/06)](#6-dax-advanced-dia-0206)
 7. [Conceitos avançados de Power BI](#7-conceitos-avançados-de-power-bi)
 8. [Glossário rápido](#8-glossário-rápido)
+9. [DAX da Página 1 — medidas e gotchas (dia 4)](#9-dax-da-página-1--medidas-e-gotchas-dia-4)
+10. [DAX da Página 2 — Demand Deep Dive (dia 8)](#10-dax-da-página-2--demand-deep-dive-dia-8)
+11. [DAX da Página 3 — Operations & Cost (dia 8)](#11-dax-da-página-3--operations--cost-dia-8)
 
 ---
 
@@ -1395,11 +1398,78 @@ Funciona em qualquer contexto:
 
 ---
 
+## 10. DAX da Página 2 — Demand Deep Dive (dia 8)
+
+> Página em 1920×1080. 4 visuais (heat map, sazonalidade, top zonas, explorador Field Parameters) + 5 KPIs. Aqui ficam as medidas novas e os gotchas resolvidos.
+
+### 10.1 O padrão "argmax" em DAX — Peak Hour e Peak Day
+
+A pergunta "qual a hora de pico?" não é `MAX(hour)` — isso daria a maior hora (23h). É a hora **que tem** mais viagens (argmax). Em DAX:
+
+```dax
+Peak Hour =
+VAR _byHour = ADDCOLUMNS ( VALUES ( dim_time[hour_label] ), "@t", [Total Trips] )
+RETURN MAXX ( TOPN ( 1, _byHour, [@t], DESC ), dim_time[hour_label] )
+```
+
+Linha a linha:
+- `VALUES(dim_time[hour_label])` → as 24 horas visíveis no contexto atual.
+- `ADDCOLUMNS(..., "@t", [Total Trips])` → tabela virtual: cada hora + suas viagens.
+- `TOPN(1, ..., [@t], DESC)` → mantém só a linha de maior `@t` (a hora campeã).
+- `MAXX(essa-1-linha, dim_time[hour_label])` → extrai o rótulo dessa hora.
+
+`Peak Day` é idêntico trocando `hour_label` por `dim_date[day_name]`. Como tudo passa por `VALUES` no contexto atual, **as medidas respondem aos filtros**: filtrou Brooklyn, o pico recalcula.
+
+### 10.2 Share e média diária
+
+```dax
+Rush Hour Trip % = DIVIDE ( CALCULATE ( [Total Trips], dim_time[is_rush_hour] = 1 ), [Total Trips] )
+Weekend Trip %   = DIVIDE ( CALCULATE ( [Total Trips], dim_date[is_weekend] = 1 ), [Total Trips] )
+Avg Daily Trips  = AVERAGEX ( VALUES ( dim_date[full_date] ), [Total Trips] )
+```
+- Flags sempre com `= 1`, nunca `TRUE()` — DAX não coage Integer↔Boolean (gotcha §9.2.1).
+- `Avg Daily Trips`: itera cada data e tira a média → throughput diário médio (linguagem SC: unidades/dia).
+
+### 10.3 Subtítulos dinâmicos + o gotcha do FORMAT com escala
+
+Os 5 cards têm subtítulo de texto que muda com o filtro. Exemplo do Rush Hour:
+```dax
+Rush Hour Subtitle =
+VAR _rushM = DIVIDE ( CALCULATE ( [Total Trips], dim_time[is_rush_hour] = 1 ), 1000000 )
+RETURN FORMAT ( _rushM, "#,##0.0", "en-US" ) & "M in rush windows"
+```
+**Gotcha (resolvido no dia 8):** a 1ª versão usava a escala de milhar do FORMAT (`"#,##0.0,,"`) pra mostrar milhões. Saiu `35.930.072,0M` — a escala `,,` é frágil e não dividiu. Correção robusta: **dividir explícito por 1e6** e formatar o resultado. Sempre com 3º argumento `"en-US"` (senão ponto/vírgula sai em PT-BR).
+
+### 10.4 `day_order_mon` — por que vive no Gold, não como calculated column
+
+O heat map precisa das colunas em **Seg→Dom**, mas o Spark numera `day_of_week` com **domingo = 1**. A coluna de ordenação:
+```sql
+-- Gold, dentro do SELECT do dim_date
+CASE WHEN day_of_week = 1 THEN 7 ELSE day_of_week - 1 END AS day_order_mon
+```
+**Por que no Gold e não "Nova coluna" no Power BI?** O modelo é **composite sobre DirectLake** (`sm_yellow_taxi_3m` remoto). Power BI **não permite calculated column em tabela remota via DirectQuery** — só medidas locais. Empurramos a lógica pro Gold: modelo fino, lógica centralizada (boa frase de entrevista).
+
+Três gotchas que apareceram nesse caminho:
+1. **`CREATE OR REPLACE TABLE dim_date` apagou as colunas de clima.** O `dim_date` é montado em 2 etapas (calendário + enrichment NOAA). Rodar só a 1ª recriou a tabela sem `snow_depth_mm` etc. → refresh quebrou ("column not found in delta table"). Lição: `CREATE OR REPLACE` é destrutivo; re-rodar o enrichment depois.
+2. **DirectLake não puxa coluna nova sozinho.** Depois de adicionar `day_order_mon` no Delta, foi preciso sincronizar a coluna no modelo semântico (Edit tables / refresh do schema).
+3. **Sort by column é no modelo semântico, não no Power BI.** Como `day_name` é coluna remota, o "Classificar por coluna" fica bloqueado no PBI Desktop (composite). Setar no modelo (Propriedades → Avançado) → herda em todas as páginas.
+
+### 10.5 Resumo das medidas da Página 2
+
+| Medida | Tipo | Onde |
+|---|---|---|
+| Peak Hour / Peak Day | String (argmax) | KPI cards |
+| Avg Daily Trips | Número | KPI card |
+| Rush Hour Trip % / Weekend Trip % | % | KPI / análise |
+| Avg Daily Trips / Peak Day / Peak Hour / Rush Hour Subtitle | String | Reference labels |
+| day_order_mon (coluna Gold) | Int | Sort de `day_name` |
+
+---
+
 ## Próximos passos do material
 
-A medida que o projeto avançar (páginas 2-5 do dashboard), este documento vai ganhar mais seções:
+A medida que o projeto avançar (páginas 3-5 do dashboard), este documento vai ganhar mais seções:
 
-- **DAX da Página 2** — heat map measures, hour×dow breakdown, sazonalidade
 - **DAX da Página 3** — histograma, scatter measures, breakdown de tarifa
 - **DAX da Página 4** — correlação demanda × demographics (ACS)
 - **M / Power Query explained** — se precisarmos de transformações no nível do PBI

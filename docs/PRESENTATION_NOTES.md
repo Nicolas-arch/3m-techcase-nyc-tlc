@@ -564,6 +564,83 @@ Avg Lead Time: 17,46 min (2022) → 17,59 min (2023) → 17,63 min (2024). Varia
 
 ---
 
+## 12. Página 2 — Demand Deep Dive (dia 8)
+
+### A ideia (por que esta página existe)
+A Página 1 responde "como está o negócio" para o C-level. A Página 2 desce um nível: responde **quando e onde a demanda acontece**, para o analista de capacity planning / S&OP — quem dimensiona frota, turnos e capacidade por nó. Tradução supply chain: cada janela horária de cada zona é o "perfil de demanda de um CD"; conhecer os picos = saber onde alocar capacidade.
+
+### Decisão de design
+- **Canvas 1920×1080** — novo padrão das páginas 2-5 (a Página 1 era 1600×900; padronizamos pra cima para ganhar densidade sem amontoar).
+- **Hero = heat map hora×dia.** A pergunta "quando?" se responde em 2 segundos pela cor. É o visual-assinatura de análise de demanda (mesma linguagem do GitHub contribution graph e dos heatmaps de demanda do Uber).
+- **KPIs neutros (sem cor condicional).** Diferente da Página 1 (2 cards-sinalizadores). Demanda não tem bom/ruim — pico às 18h é fato, não meta. Cor fica reservada para onde carrega significado.
+- **Field Parameters como vitrine self-service** na base — 1 visual = 25 análises, em vez de 25 visuais.
+
+### Os 4 visuais e o porquê
+1. **Heat map (Matrix + color scale)** — Matrix nativa com formatação condicional de fundo, não custom visual: zero dependência externa, performático, mainstream/defensável. Gradiente `#EAF1FB`→`#1F3864`. (cobre a feature Conditional Formatting nesta página)
+2. **Sazonalidade (linha por ano)** — 3 linhas (2022/2023/2024) sobre os 12 meses mostram **forma sazonal + crescimento** num visual só. Para S&OP, é o annual demand plan.
+3. **Top 10 zonas** — responde "onde nasce a demanda"; mais acionável que um mapa de 5 boroughs para capacity planning.
+4. **Explorador (Field Parameters)** — o analista troca métrica × dimensão sozinho, sem pedir tela nova.
+
+### Pontos de fala (roteiro de ~75s na demo)
+> "Se a Página 1 é o painel do executivo, esta é a do planejador. O heat map à esquerda responde 'quando' em 2 segundos: os corredores escuros mostram o pico de fim de tarde nos dias úteis (quinta às 18h é o ápice, ~1,3 milhão de viagens) e, surpreendentemente, um segundo turno de madrugada no fim de semana (sábado e domingo, meia-noite às 3h). São dois regimes de demanda diferentes, que exigem capacidade diferente — como ter um turno noturno num CD. À direita, a sazonalidade confirma um padrão estável e crescente, ou seja, forecastável. Embaixo, qualquer pessoa fatia a demanda por borough, zona, vendor, pagamento ou faixa do dia trocando dois filtros. E 31% de toda a demanda se concentra em só 4 horas do dia — é aí que a capacidade aperta."
+
+### Insights para slide (ouro descoberto na construção)
+1. **Dois regimes de demanda.** Dia útil = pico de commute fim de tarde (18h). Fim de semana = pico de madrugada (0-3h, nightlife). Tradução SC: planejamento precisa de dois perfis de capacidade, não um.
+2. **Quinta é o pico, não sexta** (Peak day = Thursday). Demanda corporativa/eventos antecede o fim de semana.
+3. **31% da demanda em 4 horas/dia** (rush 7-9h e 17-19h). Alta concentração → surge capacity / staffing dinâmico.
+4. **Sazonalidade estável + crescente** = forecast confiável → menor safety stock (mesma tese da estabilidade de lead time da Página 1).
+
+### Respostas de entrevista (Q&A)
+**Q: Por que Matrix e não um custom visual de heatmap?**
+"Matrix nativa + formatação condicional de fundo entrega o mesmo resultado sem dependência de custom visual (risco de governança e performance). Caminho mainstream e defensável."
+
+**Q: Por que os KPIs da Página 2 não têm cor condicional, se a Página 1 tinha?**
+"Decisão consciente. Na Página 1, Revenue e Anomaly têm bom/ruim, então cor sinaliza. Demanda é neutra — pico às 18h não é bom nem ruim. Verde/vermelho aqui seria ruído."
+
+**Q: Como garantiu a ordem Seg→Dom no heat map?**
+"O Spark numera o dia da semana com domingo=1. Criei a coluna `day_order_mon` (segunda=1…domingo=7) na camada Gold — não como calculated column no relatório, porque o modelo é composite sobre DirectLake e coluna calculada em tabela remota não é suportada. Empurrei a lógica pro Gold (modelo fino) e configurei Sort by column no modelo semântico."
+
+**Q: Field Parameters — por quê?**
+"Reduz 25 visuais a 1. O usuário escolhe métrica × dimensão. Menos manutenção, mais auto-serviço, melhor performance."
+
+---
+
+## 13. Página 3 — Operations & Cost (dia 8)
+
+### A ideia (por que esta página existe)
+Depois do "quando e onde" (Página 2), a Página 3 responde **quão eficiente e quão caro** é cada viagem — a tela do gerente de operações e custo. Tradução supply chain: lead time = tempo de ciclo; distância×tarifa = custo proporcional ao serviço; composição da tarifa = cost-to-serve; revenue/mile = custo unitário; surcharges = peak-season.
+
+### Decisão de design
+- **Hero = scatter distância × tarifa** (a relação custo↔serviço, com outliers visíveis).
+- **Volta a cor de sinalização** (vermelho `#D32F2F`) só na barra "Outlier" do histograma — duração outlier é ruim, sinalizar é correto. Resto neutro.
+- **`duration_class` materializado no Gold** (espelha o UDF `ClassifyTripDuration`: 5/15/30/60/180 min) — performance em vez de classificar 115M linhas em DAX.
+- **Cost/Mile usa o UDF `ComputeRevenuePerMile` ao vivo** no relatório.
+
+### Os 4 visuais + os ajustes de leitura que fizemos
+1. **Scatter** — agregado por zona (~260 pontos, performático). Ajuste-chave: filtro `is_anomalous = 0` + eixo X capado, senão zonas com viagens de 300mi achatavam 95% das bolhas no canto. Depois do ajuste, a relação linear fare↔distância aparece e os aeroportos saltam como outliers premium.
+2. **Histograma** (`duration_class`) — Outlier em vermelho.
+3. **Composição** — **barra empilhada** (1 barra, 4 segmentos). Trocamos de barras separadas (que viravam fiapos por causa das escalas diferentes) → a proporção do custo fica óbvia.
+4. **Trend** — fare por mês, mostra o choque tarifário 2022→2023.
+
+### Pontos de fala (~75s)
+> "Esta é a tela de eficiência e custo. O scatter mostra que a tarifa cresce de forma quase linear com a distância — operação previsível — e os aeroportos aparecem como outliers premium, tarifa fixa de rota. À direita, o histograma prova a consistência do lead time: 78% das viagens entre 5 e 30 minutos e só 0,09% de outliers — cadeia madura. A composição abre o custo-to-serve de $26,42: 69% tarifa base, 19% taxas e sobretaxas, 12% gorjeta. E o trend conta a história do choque tarifário de 2023, com platô em 2024 — o crescimento passou a vir de volume, não de preço. Detalhe estratégico: o custo por milha caiu 18% no ano enquanto a distância média subiu 20% — viagens mais longas trazem melhor economia por milha."
+
+### Insights para slide (ouro)
+1. **Lead time consistente**: 78% em 5–30 min, 0,09% outliers → cadeia madura, forecast confiável.
+2. **Composição do cost-to-serve** ($26,42/trip): ~69% base fare ($18,1), ~19% surcharges & taxes ($4,9), ~12% tip ($3,2).
+3. **Choque tarifário +33% 2022→2023**, platô em 2024 → crescimento via volume, não preço.
+4. **Economies of distance**: Cost/Mile −17,8% YoY enquanto distância +20,4% → viagens mais longas, melhor custo unitário.
+5. **Speed −4,5% YoY** (11,44 mph) → congestionamento piorando, risco de throughput.
+
+### Respostas de entrevista
+**Q: Por que filtrar anomalias só no scatter?** "O scatter agrega média por zona; poucas viagens de 200-300mi distorciam a média de zonas inteiras e esticavam o eixo. Filtrar `is_anomalous=0` revela a relação real. As anomalias continuam visíveis no histograma (Outlier) e na Página 5 de Data Quality — cada tela trata o outlier no contexto certo."
+
+**Q: Por que barra empilhada na composição?** "Com 4 componentes de escalas muito diferentes ($18 vs $1), barras separadas ficam ilegíveis. Empilhada mostra a proporção do custo-to-serve numa leitura só."
+
+**Q: Cost/Mile via UDF?** "`ComputeRevenuePerMile(revenue, distance)` é uma UDF DAX com guard de divisão por zero. Uso ela ao vivo na medida — UDF reaproveitável de verdade, não decorativa."
+
+---
+
 ## Storytelling final (fechamento da apresentação)
 
 > "O briefing pediu um relatório Power BI. Eu entendi que estava pedindo algo mais — uma demonstração de como eu trabalho. Por isso entreguei: pipeline end-to-end no Fabric (mesma stack da 3M), schema canônico controlado, star schema documentado, 6 features Power BI obrigatórias mais 3 UDFs reutilizáveis, fonte externa correlacional, RLS para governança, repo público versionado desde o dia 1 e plano B funcional para continuidade. Cada decisão técnica está justificada e rastreável. O que vocês vão ver no relatório é só a ponta do iceberg — a fundação está toda no repo."
