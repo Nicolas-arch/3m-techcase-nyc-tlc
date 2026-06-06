@@ -324,19 +324,128 @@ Scatter = tarifa cresce com distância, aeroportos como outliers premium. Histog
 
 ---
 
-## Página 4 — Demand vs Demographics (a construir)
+## Página 4 — Demand vs Demographics 🟡 EM CONSTRUÇÃO (dia 8)
 
-**Objetivo**: correlação entre demanda e fonte externa (ACS demographics).
+**Status**: wireframe + medidas definidos. Canvas **1920×1080**. Peça obrigatória do briefing (fonte externa ACS correlacionada).
 
-Wireframe será adicionado no dia 4.
+**Objetivo**: a demanda acompanha tamanho/riqueza de cada região? Onde há mercado sub-servido?
+**Tradução SC**: receita vs tamanho de mercado = penetração; sub-indexado = oportunidade; per-capita = intensidade normalizada.
+**Grão**: borough-level (ACS não publica por zona — §4.3). 5-6 pontos.
+
+### Mapa de posições (X, Y, W, H)
+
+| # | Componente | Tipo | X | Y | W | H |
+|---|---|---|---|---|---|---|
+| Header | navy + título | — | 0 | 0 | 1920 | 88 |
+| S1–S3 | Year / Month / Time View | Slicers | 1422/1584/1746 | 24 | 150 | 40 |
+| K1 | Population (covered) | Card | 24 | 104 | 360 | 120 |
+| K2 | Median HH Income | Card | 402 | 104 | 360 | 120 |
+| K3 | Trips per Capita | Card | 780 | 104 | 360 | 120 |
+| K4 | Revenue per Capita | Card | 1158 | 104 | 360 | 120 |
+| K5 | Demand–Income Corr (r) | Card | 1536 | 104 | 360 | 120 |
+| V1 | **Over/under-served (HERO)** | Bar divergente | 24 | 240 | 1130 | 560 |
+| V2 | Revenue/capita vs Income | Combo (coluna+linha) | 1170 | 240 | 726 | 272 |
+| V3 | Concentração (curva ABC) | Treemap | 1170 | 528 | 726 | 272 |
+| V4 | Scorecard demográfico | Matrix + data bars | 24 | 816 | 1872 | 240 |
+
+### Field wells (campo a campo)
+- **Cards**: K1 `[Population (covered)]` (sub "5 boroughs · ACS") · K2 `[Median HH Income]` (sub "population-weighted") · K3 `[Trips per Capita]`+`[Trips per Capita Subtitle]` · K4 `[Revenue per Capita]`+`[Revenue per Capita Subtitle]` · K5 `[Demand-Income Corr]` (sub "borough-level · n=5")
+- **V1 Bar divergente**: Y `dim_zone[borough]` · X `[Demand Index (pp)]` · linha de ref em 0 · cor: >0 navy `#1F3864`, <0 amber `#F29111` · filtro `borough` not in (Unknown, EWR) · sort por valor.
+- **V2 Combo**: X `dim_zone[borough]` · Coluna `[Revenue per Capita]` · Linha (eixo secundário) `[Median HH Income]`.
+- **V3 Treemap**: Categoria/Grupo `dim_zone[borough]` · Valores `[Total Revenue]` · filtro `borough` not in (Unknown, EWR). Conta a concentração/curva ABC (Manhattan+Queens ≈ 93%).
+- **V4 Matrix scorecard**: Linhas `dim_zone[borough]` · Valores `[Population (covered)]`, `[Median HH Income]`, `[Trips per Capita]`, `[Revenue per Capita]`, `[Demand Index (pp)]` · data bars + cor no índice.
+
+### Medidas DAX novas
+```dax
+Population (covered) = SUMX ( VALUES ( dim_zone[borough] ), CALCULATE ( MAX ( dim_zone[total_population] ) ) )
+
+Median HH Income =
+VAR _t = ADDCOLUMNS ( VALUES ( dim_zone[borough] ),
+    "@pop", CALCULATE ( MAX ( dim_zone[total_population] ) ),
+    "@inc", CALCULATE ( MAX ( dim_zone[median_household_income] ) ) )
+RETURN DIVIDE ( SUMX ( _t, [@pop]*[@inc] ), SUMX ( _t, [@pop] ) )
+
+Revenue per Capita = DIVIDE ( [Total Revenue], [Population (covered)] )
+Trips per Capita   = DIVIDE ( [Total Trips],   [Population (covered)] )
+Revenue Share    = DIVIDE ( [Total Revenue], CALCULATE ( [Total Revenue], REMOVEFILTERS ( dim_zone ) ) )
+Population Share = DIVIDE ( [Population (covered)], CALCULATE ( [Population (covered)], REMOVEFILTERS ( dim_zone ) ) )
+Demand Index (pp) = [Revenue Share] - [Population Share]   -- diverge em 0; >0 over-served, <0 under-served
+
+Demand-Income Corr =   -- Pearson r sobre os boroughs (n pequeno, caveat)
+VAR _t = ADDCOLUMNS ( FILTER ( VALUES ( dim_zone[borough] ), CALCULATE ( MAX ( dim_zone[total_population] ) ) > 0 ),
+    "@x", CALCULATE ( MAX ( dim_zone[median_household_income] ) ), "@y", [Total Revenue] )
+VAR _n=COUNTROWS(_t) VAR _sx=SUMX(_t,[@x]) VAR _sy=SUMX(_t,[@y])
+VAR _sxy=SUMX(_t,[@x]*[@y]) VAR _sx2=SUMX(_t,[@x]*[@x]) VAR _sy2=SUMX(_t,[@y]*[@y])
+RETURN DIVIDE ( _n*_sxy-_sx*_sy, SQRT((_n*_sx2-_sx*_sx)*(_n*_sy2-_sy*_sy)) )
+```
+Subtítulos K3/K4: template YoY (en-US).
+
+### Features cobertas
+Fonte externa (requisito) · Data Science (correlação de Pearson em DAX) · treemap (curva ABC) · medidas de share/penetração.
+
+### Storytelling + insight de ouro
+Manhattan ~75% da receita com ~19% da população (over-indexada ~4×); Brooklyn ~31% da população e ~4% da receita (sub-servida). Caveat honesto: per-capita de Manhattan inflada por não-residentes (commuters/turistas). SC: mercado sub-penetrado = oportunidade de expansão.
 
 ---
 
-## Página 5 — Data Quality / Backstage (a construir)
+## Página 5 — Data Quality & RLS/Governance 🟡 EM CONSTRUÇÃO (dia 8)
 
-**Objetivo**: transparência sobre tratamento de dados, anomalias detectadas, qualidade por borough.
+**Status**: wireframe + medidas definidos. Canvas **1920×1080**. Fecha o 6º feature obrigatório (RLS).
 
-Wireframe será adicionado no dia 4.
+**Objetivo**: provar que os dados são confiáveis e governados. Pergunta: posso confiar nesses dados, e quem vê o quê?
+
+### Mapa de posições (X, Y, W, H)
+
+| # | Componente | Tipo | X | Y | W | H |
+|---|---|---|---|---|---|---|
+| Header | navy + título | — | 0 | 0 | 1920 | 88 |
+| S1–S3 | Year / Month / Time View | Slicers | 1422/1584/1746 | 24 | 150 | 40 |
+| K1 | Raw Rows | Card | 24 | 104 | 360 | 120 |
+| K2 | Clean Rows | Card | 402 | 104 | 360 | 120 |
+| K3 | Retained % | Card | 780 | 104 | 360 | 120 |
+| K4 | Rows Discarded | Card | 1158 | 104 | 360 | 120 |
+| K5 | Anomalies flagged | Card | 1536 | 104 | 360 | 120 |
+| V1 | **Discard breakdown (HERO)** | Bar horizontal | 24 | 240 | 1130 | 560 |
+| V2 | Anomaly rate por borough | Column | 1170 | 240 | 726 | 272 |
+| V3 | **RLS — visão por gestor** | Bar horizontal | 1170 | 528 | 726 | 272 |
+| V4 | Top anomalies detected | Table | 24 | 816 | 1872 | 240 |
+
+### Field wells
+- **Cards**: K1 `[Raw Rows]` (sub "Bronze · raw") · K2 `[Clean Rows]` (sub "Silver→Gold") · K3 `[Retained %]` (sub "data quality") · K4 `[Rows Discarded]` (sub "removidas na Silver") · K5 `[Anomalous Trips]` (sub `[Anomaly Rate]`)
+- **V1**: Y `discard_reasons[reason]` · X `discard_reasons[rows]` · data labels · sort desc.
+- **V2**: X `dim_zone[borough]` · Y `[Anomaly Rate]` · cor condicional (maior = vermelho).
+- **V3**: clustered bar (sem eixo) · Valores = `[Global Manager View]`, `[Manhattan Manager View]`, `[Queens Manager View]`, `[Brooklyn Manager View]`, `[Bronx Manager View]`, `[Staten Island Manager View]`.
+- **V4**: Table · `dim_zone[zone_name]`, `fact_trips[duration_min]`, `fact_trips[trip_distance_mi]`, `fact_trips[total_amount]` · filtro `is_anomalous = 1` · Top 10 por `total_amount`.
+
+### Tabela auxiliar (Inserir dados) — `discard_reasons`
+| reason | rows |
+|---|---|
+| Distance ≤ 0 | 2123821 |
+| Fare < 0 | 1365574 |
+| Dropoff ≤ Pickup | 61114 |
+| Temporal leak | 663 |
+
+### Medidas DAX
+```dax
+Raw Rows = 119136044
+Clean Rows = [Total Trips]
+Rows Discarded = [Raw Rows] - [Clean Rows]
+Retained % = DIVIDE ( [Clean Rows], [Raw Rows] )
+
+Global Manager View        = [Total Revenue]
+Manhattan Manager View     = CALCULATE ( [Total Revenue], dim_zone[borough] = "Manhattan" )
+Queens Manager View        = CALCULATE ( [Total Revenue], dim_zone[borough] = "Queens" )
+Brooklyn Manager View      = CALCULATE ( [Total Revenue], dim_zone[borough] = "Brooklyn" )
+Bronx Manager View         = CALCULATE ( [Total Revenue], dim_zone[borough] = "Bronx" )
+Staten Island Manager View = CALCULATE ( [Total Revenue], dim_zone[borough] = "Staten Island" )
+```
+Reaproveita `[Anomalous Trips]` e `[Anomaly Rate]`. As 6 RLS roles vivem no semantic model do Fabric; o composite não mostra roles remotas no "Exibir como", então essas medidas demonstram o efeito (gotcha documentado em PRESENTATION §8.5 / decisões).
+
+### Features obrigatórias cobertas aqui
+**Row-Level Security** (showcase via medidas + roles no Fabric) + transparência de pipeline + evidência de anomalias.
+
+### Storytelling (demo)
+98,16% retido; cada descarte rastreável; 0,16% de anomalias marcadas (não apagadas) — campeã: $401k em 10 min (erro de medidor); RLS escopa cada gestor ao seu borough. Confiança + governança.
 
 ---
 

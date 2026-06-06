@@ -15,6 +15,7 @@
 9. [DAX da Página 1 — medidas e gotchas (dia 4)](#9-dax-da-página-1--medidas-e-gotchas-dia-4)
 10. [DAX da Página 2 — Demand Deep Dive (dia 8)](#10-dax-da-página-2--demand-deep-dive-dia-8)
 11. [DAX da Página 3 — Operations & Cost (dia 8)](#11-dax-da-página-3--operations--cost-dia-8)
+12. [DAX da Página 4 — Demand vs Demographics (dia 8)](#12-dax-da-página-4--demand-vs-demographics-dia-8)
 
 ---
 
@@ -1523,13 +1524,62 @@ Coluna no Gold (regra do DirectLake em §10.4). Limites idênticos ao UDF `Class
 | Avg Base Fare / Tip / Tolls / Surcharges & Taxes | SUM(x)/Trips | V3 composição |
 | duration_class (Gold) | CASE = UDF ClassifyTripDuration | V2 histograma |
 
+## 12. DAX da Página 4 — Demand vs Demographics (dia 8)
+
+### 12.1 Atributos de borough sem dupla contagem
+`total_population` e `median_household_income` ficam repetidos em cada zona do borough. Para não somar o mesmo número 265×:
+```dax
+Population (covered) = SUMX ( VALUES ( dim_zone[borough] ), CALCULATE ( MAX ( dim_zone[total_population] ) ) )
+```
+`VALUES(borough)` pega cada borough uma vez; `MAX(total_population)` pega o valor do borough; `SUMX` soma os distintos. Income é **média ponderada pela população** (média simples de medianas seria errada):
+```dax
+Median HH Income =
+VAR _t = ADDCOLUMNS ( VALUES ( dim_zone[borough] ),
+    "@pop", CALCULATE ( MAX ( dim_zone[total_population] ) ),
+    "@inc", CALCULATE ( MAX ( dim_zone[median_household_income] ) ) )
+RETURN DIVIDE ( SUMX ( _t, [@pop]*[@inc] ), SUMX ( _t, [@pop] ) )
+```
+
+### 12.2 Shares e Demand Index
+```dax
+Revenue Share    = DIVIDE ( [Total Revenue], CALCULATE ( [Total Revenue], REMOVEFILTERS ( dim_zone ) ) )
+Population Share = DIVIDE ( [Population (covered)], CALCULATE ( [Population (covered)], REMOVEFILTERS ( dim_zone ) ) )
+Demand Index (pp) = [Revenue Share] - [Population Share]
+```
+`REMOVEFILTERS(dim_zone)` traz o total da rede como denominador → cada borough vira % do todo. O índice (diferença) >0 = over-served, <0 = sub-servido.
+
+### 12.3 Correlação de Pearson em DAX (toque de data science)
+```dax
+Demand-Income Corr =
+VAR _t = ADDCOLUMNS ( FILTER ( VALUES ( dim_zone[borough] ), CALCULATE ( MAX ( dim_zone[total_population] ) ) > 0 ),
+    "@x", CALCULATE ( MAX ( dim_zone[median_household_income] ) ), "@y", [Total Revenue] )
+VAR _n=COUNTROWS(_t) VAR _sx=SUMX(_t,[@x]) VAR _sy=SUMX(_t,[@y])
+VAR _sxy=SUMX(_t,[@x]*[@y]) VAR _sx2=SUMX(_t,[@x]*[@x]) VAR _sy2=SUMX(_t,[@y]*[@y])
+RETURN DIVIDE ( _n*_sxy-_sx*_sy, SQRT((_n*_sx2-_sx*_sx)*(_n*_sy2-_sy*_sy)) )
+```
+n=5 (boroughs) → direcional, não conclusivo. Resultado ≈ 0,43 (moderado).
+
+### 12.4 Gotchas
+1. **Uma medida por vez** — colar o bloco todo num measure → erro "sintaxe de Median" (o parser lê "Median HH Income =" como parte da expressão).
+2. **Filtro de página** pra remover Unknown/N/A/EWR dos 4 visuais de uma vez (poluíam tudo + geravam valores estranhos, ex.: EWR sem população residente).
+3. **Caveat da per-capita** — denominador = população residente; Manhattan inflada (riders ≠ moradores). Citar na demo = maturidade analítica.
+
+### 12.5 Resumo das medidas da Página 4
+| Medida | Papel |
+|---|---|
+| Population (covered) / Median HH Income | tamanho e riqueza do mercado (sem dupla contagem) |
+| Revenue/Trips per Capita | intensidade de demanda normalizada |
+| Revenue Share / Population Share | base do índice de penetração |
+| Demand Index (pp) | over/under-served (hero divergente) |
+| Demand-Income Corr | correlação demanda × renda (DS) |
+
 ---
 
 ## Próximos passos do material
 
 A medida que o projeto avançar (páginas 4-5 do dashboard), este documento vai ganhar mais seções:
 
-- **DAX da Página 4** — correlação demanda × demographics (ACS)
+- **DAX da Página 5** — funil de qualidade, anomalias por borough, RLS
 - **M / Power Query explained** — se precisarmos de transformações no nível do PBI
 - **Diagramas visuais** — exportados do draw.io
 

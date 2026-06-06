@@ -641,6 +641,40 @@ Depois do "quando e onde" (Página 2), a Página 3 responde **quão eficiente e 
 
 ---
 
+## 14. Página 4 — Demand vs Demographics (dia 8)
+
+### A ideia
+Peça obrigatória do briefing: fonte externa (US Census ACS) correlacionada com a demanda. Pergunta: a demanda acompanha tamanho/riqueza da região e onde há mercado sub-servido? Tradução SC: penetração de mercado; sub-indexado = oportunidade.
+
+### Decisão de design (por que evitamos scatter E mapa)
+Não repeti o scatter (já usado na Pág. 3) — variedade visual conta na avaliação. Tirei também o mapa: no grão borough (5 pontos) ele é pobre e arriscado no geocoding. Resultado: 4 tipos distintos — barra divergente, combo, treemap, matrix.
+
+### Os 4 visuais
+1. **Barra divergente** (Demand Index pp = Revenue share − Population share): hero / punchline de negócio.
+2. **Combo** (revenue/capita coluna + median income linha): a demanda segue a renda?
+3. **Treemap** (revenue share): concentração / curva ABC.
+4. **Matrix scorecard**: detalhe por borough, data bars + índice colorido.
+
+### Gotchas resolvidos
+- Boroughs-lixo (Unknown/N/A/EWR) poluíam os 4 visuais → **filtro no nível da página**.
+- Medidas têm de ser criadas **uma de cada vez** (colar o bloco inteiro num único measure dá erro de sintaxe "Median").
+
+### Pontos de fala (~70s)
+> "Esta peça cruza a operação com uma fonte externa, o Census. A barra divergente resume: Manhattan captura 55 pontos percentuais a mais de receita do que seu tamanho populacional sugere — over-served; Brooklyn é o oposto, −29pp, o maior mercado sub-servido. O combo mostra que renda explica só parte: a correlação é 0,43, moderada — a demanda é puxada por negócios e turismo, não pela riqueza do morador. O treemap fecha com a concentração: dois boroughs respondem por ~93% da receita, curva ABC clássica. Caveat honesto: a per-capita de Manhattan é inflada porque os passageiros lá não são residentes."
+
+### Insights de ouro
+1. Manhattan +55pp over-served; Brooklyn −29pp sub-servido (maior oportunidade).
+2. r = 0,43 — demanda só parcialmente segue renda (negócios/turismo).
+3. ABC: Manhattan + Queens ≈ 93% da receita.
+4. Caveat: per-capita de Manhattan inflada por não-residentes.
+
+### Q&A
+- **Por que treemap, não mapa/scatter?** Scatter já usado na 3; mapa borough-grain é pobre; treemap traz part-to-whole + framing ABC.
+- **Como mediu over/under-served?** Revenue share − Population share (pp).
+- **Correlação em DAX?** Pearson manual sobre boroughs (n=5, direcional — limitação do grão ACS, documentada).
+
+---
+
 ## Storytelling final (fechamento da apresentação)
 
 > "O briefing pediu um relatório Power BI. Eu entendi que estava pedindo algo mais — uma demonstração de como eu trabalho. Por isso entreguei: pipeline end-to-end no Fabric (mesma stack da 3M), schema canônico controlado, star schema documentado, 6 features Power BI obrigatórias mais 3 UDFs reutilizáveis, fonte externa correlacional, RLS para governança, repo público versionado desde o dia 1 e plano B funcional para continuidade. Cada decisão técnica está justificada e rastreável. O que vocês vão ver no relatório é só a ponta do iceberg — a fundação está toda no repo."
