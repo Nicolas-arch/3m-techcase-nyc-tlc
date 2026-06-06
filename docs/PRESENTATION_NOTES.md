@@ -675,6 +675,33 @@ Não repeti o scatter (já usado na Pág. 3) — variedade visual conta na avali
 
 ---
 
+## 15. Página 5 — Data Quality & Governance (dia 8)
+
+### A ideia
+Tela "backstage" que prova **confiança e governança** — e fecha o 6º feature (RLS). Pergunta: posso confiar nesses dados e quem vê o quê? Sem ela o relatório é "bonito"; com ela vira "auditável".
+
+### Os 4 visuais
+1. **Discard breakdown** (bar): por que 2,84% saíram — cada motivo rastreável.
+2. **Anomaly rate por borough** (column, cor condicional): onde está o ruído.
+3. **RLS — visão por gestor** (bar): prova do Row-Level Security.
+4. **Top anomalies by zone** (table agregada): evidência concreta.
+
+### Pontos de fala (~70s)
+> "Esta é a tela da confiança. Retivemos 97,16% das 119 milhões de linhas, e cada descarte tem motivo explícito — distância ≤ 0, tarifa negativa. As 0,16% de anomalias não foram apagadas: ficaram marcadas e mapeadas. Staten Island tem a maior taxa, 0,98%, oito vezes Manhattan — quanto menor o volume, mais ruído relativo. À direita, o RLS: 6 roles no Fabric; cada gerente só vê o próprio borough, o global vê os $3,06 Bi. Segurança na camada do modelo, não no visual."
+
+### Insights de ouro
+1. 97,16% retido; descarte ~95% explicado por distância ≤ 0 + tarifa negativa.
+2. Anomalia inversamente proporcional ao volume: Staten Island 0,98% vs Manhattan 0,12%.
+3. Dois perfis de anomalia: aeroportos = muitas e pequenas; Manhattan = poucas e extremas ($401k em Gramercy).
+4. RLS escopa cada gestor; soma dos boroughs ≈ global (gap = zonas não-NYC).
+
+### Q&A
+- **Como o RLS funciona no composite?** Roles no semantic model do Fabric; o composite não mostra roles remotas no "Exibir como", então uso medidas "Manager View" pra demonstrar o efeito.
+- **Por que a soma do descarte (3,55M) > líquido (3,38M)?** Overlap: linhas que falham mais de um critério.
+- **Por que agregou a tabela de anomalias por zona?** Sem ID único de trip, não dá pra listar trips individuais nativamente; mostro a maior anomalia por zona.
+
+---
+
 ## Storytelling final (fechamento da apresentação)
 
 > "O briefing pediu um relatório Power BI. Eu entendi que estava pedindo algo mais — uma demonstração de como eu trabalho. Por isso entreguei: pipeline end-to-end no Fabric (mesma stack da 3M), schema canônico controlado, star schema documentado, 6 features Power BI obrigatórias mais 3 UDFs reutilizáveis, fonte externa correlacional, RLS para governança, repo público versionado desde o dia 1 e plano B funcional para continuidade. Cada decisão técnica está justificada e rastreável. O que vocês vão ver no relatório é só a ponta do iceberg — a fundação está toda no repo."

@@ -35,7 +35,7 @@ Tabela-fato central. Granularidade: 1 linha por viagem (trip). Particionada por 
 | `is_weekend` | int | derivado (Silver) | Flag 1/0. Sábado ou domingo. |
 | `day_part` | string | derivado (Silver) | Late Night / Morning / Afternoon / Evening. |
 
-**Volume**: 115.756.175 linhas (98,16% do Bronze, após filtros de qualidade).
+**Volume**: 115.756.175 linhas (97,16% do Bronze, após filtros de qualidade).
 
 ---
 

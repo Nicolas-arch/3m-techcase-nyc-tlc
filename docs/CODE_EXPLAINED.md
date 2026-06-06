@@ -16,6 +16,7 @@
 10. [DAX da Página 2 — Demand Deep Dive (dia 8)](#10-dax-da-página-2--demand-deep-dive-dia-8)
 11. [DAX da Página 3 — Operations & Cost (dia 8)](#11-dax-da-página-3--operations--cost-dia-8)
 12. [DAX da Página 4 — Demand vs Demographics (dia 8)](#12-dax-da-página-4--demand-vs-demographics-dia-8)
+13. [DAX da Página 5 — Data Quality & Governance (dia 8)](#13-dax-da-página-5--data-quality--governance-dia-8)
 
 ---
 
@@ -1573,13 +1574,49 @@ n=5 (boroughs) → direcional, não conclusivo. Resultado ≈ 0,43 (moderado).
 | Demand Index (pp) | over/under-served (hero divergente) |
 | Demand-Income Corr | correlação demanda × renda (DS) |
 
+## 13. DAX da Página 5 — Data Quality & Governance (dia 8)
+
+### 13.1 KPIs do funil
+```dax
+Raw Rows = 119136044                       -- fato do pipeline (Bronze), hardcoded
+Clean Rows = [Total Trips]                 -- 115,7M, vem do modelo
+Rows Discarded = [Raw Rows] - [Clean Rows]
+Retained % = DIVIDE ( [Clean Rows], [Raw Rows] )   -- 97,16%
+Discarded Rows = SUM ( discard_reasons[rows] )     -- valor do V1
+```
+**Gotcha**: com o calc group ligado, "desencorajar medidas implícitas" fica on → não dá pra jogar `discard_reasons[rows]` cru num visual; tem que ser a medida `Discarded Rows`.
+
+### 13.2 RLS — medidas "Manager View"
+```dax
+Global Manager View    = [Total Revenue]
+Manhattan Manager View = CALCULATE ( [Total Revenue], dim_zone[borough] = "Manhattan" )
+-- idem Queens, Brooklyn, Bronx, Staten Island
+```
+As 6 roles vivem no semantic model do Fabric. O composite (DirectQuery sobre modelo remoto) **não** mostra roles remotas no "Exibir como", então essas medidas demonstram o efeito do RLS no relatório. Cada gestor vê só seu borough; o global vê os $3,06 Bi.
+
+### 13.3 Top anomalies — agregado por zona
+Sem trip_id único no fato, não dá pra listar trips individuais nativamente (a tabela agrupa). Solução: max por zona.
+```dax
+Max Anomaly Total = CALCULATE ( MAX ( fact_trips[total_amount] ), fact_trips[is_anomalous] = 1 )
+Max Anomaly Duration = CALCULATE ( MAX ( fact_trips[duration_min] ), fact_trips[is_anomalous] = 1 )
+```
+Tabela: `zone_name` × `[Anomalous Trips]`, `[Max Anomaly Total]`, `[Max Anomaly Duration]`, Top 10 por max → Gramercy ($401k) no topo.
+
+### 13.4 Tabela auxiliar `discard_reasons`
+4 linhas (reason, rows) via Inserir dados (ou Gold). Soma = 3,55M > líquido 3,38M (overlap: linhas que falham mais de um critério, contadas em cada motivo, removidas uma vez).
+
+### 13.5 Gotchas
+- Calc group → medidas explícitas obrigatórias.
+- DirectLake não publica tabela/coluna nova sozinho → "Editar tabelas" no modelo + sync do SQL endpoint.
+- Retenção real = **97,16%** (corrigido o typo 98,16% no DATA_DICTIONARY).
+
 ---
 
 ## Próximos passos do material
 
 A medida que o projeto avançar (páginas 4-5 do dashboard), este documento vai ganhar mais seções:
 
-- **DAX da Página 5** — funil de qualidade, anomalias por borough, RLS
+- ✅ Páginas 1–5 documentadas (§9–§13) — Power BI completo
 - **M / Power Query explained** — se precisarmos de transformações no nível do PBI
 - **Diagramas visuais** — exportados do draw.io
 

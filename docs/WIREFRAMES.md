@@ -4,7 +4,7 @@
 
 ## Convenções
 
-- **Tamanho da página**: 16:9 padrão Power BI Desktop (1280×720 px).
+- **Tamanho da página**: **1920×1080 px** (padrão do projeto, telas 1-5; blueprint inicial era 1280×720, padronizado pra cima no dia 8).
 - **Grid**: 12 colunas, ~107px cada.
 - **Tema**: aplicado via `powerbi/theme.json` (azul corporativo).
 - **Tipografia**: Segoe UI (default do tema).
@@ -14,7 +14,7 @@
 
 ## Página 1 — Executive Overview ✅ FINALIZADA (dia 4)
 
-**Status**: tela completa, polishes aplicados, todos os subtítulos dinâmicos em inglês. Canvas final: **1600×900px**.
+**Status**: tela completa, polishes aplicados, todos os subtítulos dinâmicos em inglês. Canvas final: **1920×1080px** (reescalada no dia 8 pra padronizar com as telas 2-5). _(coordenadas detalhadas abaixo são do canvas antigo 1280/1600 — referência histórica.)_
 
 **Objetivo**: telinha-resposta para o C-level. Em **5 segundos**, o leitor sabe: volume, receita, tendência, geografia, top lanes.
 
@@ -412,10 +412,10 @@ Manhattan ~75% da receita com ~19% da população (over-indexada ~4×); Brooklyn
 
 ### Field wells
 - **Cards**: K1 `[Raw Rows]` (sub "Bronze · raw") · K2 `[Clean Rows]` (sub "Silver→Gold") · K3 `[Retained %]` (sub "data quality") · K4 `[Rows Discarded]` (sub "removidas na Silver") · K5 `[Anomalous Trips]` (sub `[Anomaly Rate]`)
-- **V1**: Y `discard_reasons[reason]` · X `discard_reasons[rows]` · data labels · sort desc.
-- **V2**: X `dim_zone[borough]` · Y `[Anomaly Rate]` · cor condicional (maior = vermelho).
+- **V1**: Y `discard_reasons[reason]` · X `[Discarded Rows]` (medida — o calc group desabilita medidas implícitas, então coluna crua é recusada) · data labels · sort desc.
+- **V2**: X `dim_zone[borough]` · Y `[Anomaly Rate]` · cor condicional (maior = vermelho) · **filtro NO VISUAL** (não na página): `borough` not in (Unknown, N/A, EWR). (N/A = zonas TLC 264/265, fora de NYC/não identificadas)
 - **V3**: clustered bar (sem eixo) · Valores = `[Global Manager View]`, `[Manhattan Manager View]`, `[Queens Manager View]`, `[Brooklyn Manager View]`, `[Bronx Manager View]`, `[Staten Island Manager View]`.
-- **V4**: Table · `dim_zone[zone_name]`, `fact_trips[duration_min]`, `fact_trips[trip_distance_mi]`, `fact_trips[total_amount]` · filtro `is_anomalous = 1` · Top 10 por `total_amount`.
+- **V4**: Table AGREGADA por zona (o fato não tem trip_id único → não dá pra listar trips individuais). Linhas `dim_zone[zone_name]` · Valores `[Anomalous Trips]`, `[Max Anomaly Total]`, `[Max Anomaly Duration]` · Top N = 10 zonas por `[Max Anomaly Total]`.
 
 ### Tabela auxiliar (Inserir dados) — `discard_reasons`
 | reason | rows |
@@ -431,6 +431,7 @@ Raw Rows = 119136044
 Clean Rows = [Total Trips]
 Rows Discarded = [Raw Rows] - [Clean Rows]
 Retained % = DIVIDE ( [Clean Rows], [Raw Rows] )
+Discarded Rows = SUM ( discard_reasons[rows] )   -- valor do V1; soma da auditoria (3,55M) > Rows Discarded (3,38M) por overlap de critérios
 
 Global Manager View        = [Total Revenue]
 Manhattan Manager View     = CALCULATE ( [Total Revenue], dim_zone[borough] = "Manhattan" )
@@ -438,6 +439,10 @@ Queens Manager View        = CALCULATE ( [Total Revenue], dim_zone[borough] = "Q
 Brooklyn Manager View      = CALCULATE ( [Total Revenue], dim_zone[borough] = "Brooklyn" )
 Bronx Manager View         = CALCULATE ( [Total Revenue], dim_zone[borough] = "Bronx" )
 Staten Island Manager View = CALCULATE ( [Total Revenue], dim_zone[borough] = "Staten Island" )
+
+Discarded Rows = SUM ( discard_reasons[rows] )   -- V1 (calc group exige medida explícita)
+Max Anomaly Total = CALCULATE ( MAX ( fact_trips[total_amount] ), fact_trips[is_anomalous] = 1 )
+Max Anomaly Duration = CALCULATE ( MAX ( fact_trips[duration_min] ), fact_trips[is_anomalous] = 1 )
 ```
 Reaproveita `[Anomalous Trips]` e `[Anomaly Rate]`. As 6 RLS roles vivem no semantic model do Fabric; o composite não mostra roles remotas no "Exibir como", então essas medidas demonstram o efeito (gotcha documentado em PRESENTATION §8.5 / decisões).
 
@@ -445,7 +450,7 @@ Reaproveita `[Anomalous Trips]` e `[Anomaly Rate]`. As 6 RLS roles vivem no sema
 **Row-Level Security** (showcase via medidas + roles no Fabric) + transparência de pipeline + evidência de anomalias.
 
 ### Storytelling (demo)
-98,16% retido; cada descarte rastreável; 0,16% de anomalias marcadas (não apagadas) — campeã: $401k em 10 min (erro de medidor); RLS escopa cada gestor ao seu borough. Confiança + governança.
+97,16% retido (2,84% descartado); cada descarte rastreável; 0,16% de anomalias marcadas (não apagadas) — campeã: $401k em 10 min (erro de medidor); RLS escopa cada gestor ao seu borough. Confiança + governança.
 
 ---
 
