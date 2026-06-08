@@ -702,6 +702,11 @@ Tela "backstage" que prova **confiança e governança** — e fecha o 6º featur
 
 ---
 
-## Storytelling final (fechamento da apresentação)
+## Página 6 — Weather Impact & Operational Risk
 
-> "O briefing pediu um relatório Power BI. Eu entendi que estava pedindo algo mais — uma demonstração de como eu trabalho. Por isso entreguei: pipeline end-to-end no Fabric (mesma stack da 3M), schema canônico controlado, star schema documentado, 6 features Power BI obrigatórias mais 3 UDFs reutilizáveis, fonte externa correlacional, RLS para governança, repo público versionado desde o dia 1 e plano B funcional para continuidade. Cada decisão técnica está justificada e rastreável. O que vocês vão ver no relatório é só a ponta do iceberg — a fundação está toda no repo."
+### A ideia
+Tela que fecha o loop das fontes externas: os dados NOAA ingeridos no Bronze, enriquecidos no Gold, finalmente aparecem como análise de negócio. Duas perguntas em uma tela: *qual estação cria mais pressão operacional?* e *eventos climáticos extremos realmente afetam o ciclo?*
+
+### Os visuais
+1. **V1 — Season combo chart (hero)**: barras de throughput (Avg Daily Trips) + linha de lead time por estação. Spring lidera em volume (113k/dia), Fall é a estação de estresse — 2º volume COM o pior lead time (18,46 min).
+2. **V2 — Extreme weather mini-charts** (3 charts lado a

@@ -161,7 +161,7 @@ Tokens necessários (cadastro gratuito):
 - **Gotcha documentado**: Composite Model NÃO mostra roles remotas em "Exibir como" do PBI Desktop — solução demo via medidas DAX equivalentes (`Manhattan Manager View = CALCULATE([Total Revenue], dim_zone[borough]="Manhattan")`).
 
 ### Página 1 — Executive Overview (dia 04/06)
-- **Canvas 1920×1080px** (padronizado em todas as 5 telas) com header navy + 5 KPI cards + trendline + borough chart + tabela Top 10 OD lanes.
+- **Canvas 1920×1080px** (padronizado em todas as 6 telas) com header navy + 5 KPI cards + trendline + borough chart + tabela Top 10 OD lanes.
 - **Hierarquia cromática 2+3**: 2 cards-sinalizadores (Revenue + Anomaly Rate, com cor dinâmica via DAX) + 3 cards informativos neutros.
 - **Internacionalização EN**: todos os subtítulos dinâmicos em inglês (apresentação global 3M).
 - **KPI hero substituído**: removido YoY Growth (redundante com subtitle do Revenue card) → adicionado **AVG LEAD TIME (min) = 17,56** como KPI universal de supply chain.
@@ -175,12 +175,13 @@ Tokens necessários (cadastro gratuito):
   - Fare plateau 2024 (-1,0%) — revenue growth via volume, não preço (saudável).
   - **Lead Time variability < 1% em 3 anos** (17,46→17,59→17,63 min) — KPI gold para S&OP global, slide próprio na apresentação.
 
-### Dashboard — Páginas 2 a 5 (dia 08/06)
+### Dashboard — Páginas 2 a 6 (dia 08–09/06)
 - **Página 2 — Demand Deep Dive**: heat map hora×dia (Matrix + color scale), sazonalidade por ano, top zonas e explorador por Field Parameters. Coluna `day_order_mon` no Gold pra ordenar Seg→Dom. Insight: dois regimes de demanda (pico de fim de tarde nos dias úteis + madrugada de fim de semana); 31% da demanda em 4h/dia.
 - **Página 3 — Operations & Cost**: scatter distância×tarifa, histograma de lead time (`duration_class`, espelha UDF `ClassifyTripDuration`), composição da tarifa (barra empilhada) e trend de cost-to-serve. UDF `ComputeRevenuePerMile` ao vivo. Insight: 78% das viagens em 5-30 min (lead time consistente); choque tarifário +33% em 2023.
 - **Página 4 — Demand vs Demographics** (fonte externa obrigatória): barra divergente de over/under-served, combo demanda×renda, treemap de concentração ABC e scorecard. Correlação de Pearson em DAX. Insight: Manhattan over-served ~4× (75% receita / 19% população); Brooklyn sub-servido.
 - **Página 5 — Data Quality & RLS/Governance**: breakdown de descarte, anomaly rate por borough, **showcase de Row-Level Security** (6 roles) e top anomalies por zona. Fecha o 6º feature obrigatório.
-- **Verificação final**: 5 telas em canvas 1920×1080, tema navy consistente, 6 features cobertos.
+- **Página 6 — Weather Impact & Operational Risk** (fonte externa NOAA em uso): season combo chart (throughput × lead time por estação), 3 mini-charts Normal vs Extreme, season matrix e insight boxes. Insight chave: Fall = bimodal stress (2º volume + pior lead time); Spring = peak volume eficiente; 4 dias extremos em 3 anos — auto-seleção de demanda.
+- **Verificação final**: 6 telas em canvas 1920×1080, tema navy consistente, 6 features cobertos.
 
 Decisões técnicas e respostas-padrão para apresentação em [`docs/PRESENTATION_NOTES.md`](docs/PRESENTATION_NOTES.md).
 Material didático do código em [`docs/CODE_EXPLAINED.md`](docs/CODE_EXPLAINED.md).
@@ -190,13 +191,4 @@ Layout do dashboard em [`docs/WIREFRAMES.md`](docs/WIREFRAMES.md).
 
 - ✅ Escopo: Yellow Taxi 2022–2024
 - ✅ Fonte externa correlacionada (ACS Demographics + NOAA Weather)
-- ✅ Features obrigatórias: Time Intelligence ✅, Field Parameters ✅, Calculation Groups ✅, Conditional Formatting ✅, RLS ✅, UDFs DAX ✅
-- ✅ Dashboard 5 páginas: Executive Overview · Demand Deep Dive · Operations & Cost · Demand vs Demographics · Data Quality & RLS
-
-## Autor
-
-Nicolas Augusto — Campinas/SP — [LinkedIn](#)
-
-## Licença
-
-[MIT](LICENSE)
+- ✅ 

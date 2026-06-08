@@ -1,0 +1,124 @@
+<svg viewBox="0 0 1930 1090" width="100%" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="t3 d3" style="border-radius: 12px;" font-family="'Segoe UI',Calibri,Arial,sans-serif">
+<title id="t3">Tela de menu do Power BI com 6 cards de navegação</title>
+<desc id="d3">Marca centralizada, título, subtítulo e 6 cards de navegação; card 01 destacado pela borda amarela.</desc>
+<defs>
+<linearGradient id="bg3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0A152B"/><stop offset="1" stop-color="#16294C"/></linearGradient>
+<g id="ar3"><line x1="0" y1="0" x2="20" y2="0" stroke="#FFC20E" stroke-width="3" stroke-linecap="round"/><polyline points="13,-6 20,0 13,6" fill="none" stroke="#FFC20E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></g>
+</defs>
+
+<!-- Background -->
+<rect x="0" y="0" width="1920" height="1080" fill="url(#bg3)"/>
+
+<!-- Logo / Icon -->
+<rect x="930" y="110" width="60" height="60" rx="16" fill="#FFC20E"/>
+<rect x="942" y="142" width="36" height="16" rx="5" fill="#14264A"/>
+<rect x="948" y="130" width="24" height="13" rx="4" fill="#14264A"/>
+<rect x="955" y="124" width="10" height="6" fill="#14264A"/>
+<circle cx="950" cy="160" r="5" fill="#14264A"/>
+<circle cx="970" cy="160" r="5" fill="#14264A"/>
+
+<!-- Header text -->
+<text x="960" y="205" text-anchor="middle" font-size="14" fill="#FFC20E" letter-spacing="2.5">EXECUTIVE REPORT   ·   NYC TLC  2022–2024</text>
+<text x="960" y="278" text-anchor="middle" font-size="50" font-weight="bold" fill="#F4F8FD">Yellow Taxi – Urban Supply Chain</text>
+<text x="960" y="322" text-anchor="middle" font-size="22" fill="#96AACA">Select a report section to explore.</text>
+
+<!-- ═══════════════════════════════════════════════════
+     CARD 01 — Executive Overview  (x=72, w=276)
+     ═══════════════════════════════════════════════════ -->
+<rect x="72" y="452" width="276" height="348" rx="18" fill="#21345C" stroke="#FFC20E" stroke-width="2"/>
+<text x="322" y="504" text-anchor="end" font-size="40" font-weight="bold" fill="#FFC20E" fill-opacity="0.30">01</text>
+<rect x="100" y="482" width="50" height="50" rx="13" fill="#FFFFFF" fill-opacity="0.10"/>
+<rect x="113" y="495" width="10" height="10" rx="2" fill="none" stroke="#FFC20E" stroke-width="2.4"/>
+<rect x="127" y="495" width="10" height="10" rx="2" fill="none" stroke="#FFC20E" stroke-width="2.4"/>
+<rect x="113" y="509" width="10" height="10" rx="2" fill="none" stroke="#FFC20E" stroke-width="2.4"/>
+<rect x="127" y="509" width="10" height="10" rx="2" fill="none" stroke="#FFC20E" stroke-width="2.4"/>
+<text x="100" y="599" font-size="21" font-weight="bold" fill="#F4F8FD">Executive Overview</text>
+<text x="100" y="630" font-size="14" fill="#96AACA">Revenue, demand &amp; headline KPIs.</text>
+<line x1="100" y1="704" x2="320" y2="704" stroke="#FFFFFF" stroke-opacity="0.14"/>
+<text x="100" y="748" font-size="14" font-weight="bold" fill="#FFC20E">Open report</text>
+<use href="#ar3" x="196" y="743"/>
+
+<!-- ═══════════════════════════════════════════════════
+     CARD 02 — Demand Deep Dive  (x=372, w=276)
+     ═══════════════════════════════════════════════════ -->
+<rect x="372" y="452" width="276" height="348" rx="18" fill="#15274A" stroke="#33486B"/>
+<text x="622" y="504" text-anchor="end" font-size="40" font-weight="bold" fill="#FFC20E" fill-opacity="0.30">02</text>
+<rect x="400" y="482" width="50" height="50" rx="13" fill="#FFFFFF" fill-opacity="0.08"/>
+<circle cx="425" cy="507" r="12" fill="none" stroke="#FFC20E" stroke-width="2.6"/>
+<line x1="425" y1="507" x2="425" y2="500" stroke="#FFC20E" stroke-width="2.6" stroke-linecap="round"/>
+<line x1="425" y1="507" x2="431" y2="508" stroke="#FFC20E" stroke-width="2.6" stroke-linecap="round"/>
+<text x="400" y="599" font-size="21" font-weight="bold" fill="#F4F8FD">Demand Deep Dive</text>
+<text x="400" y="630" font-size="14" fill="#96AACA">When &amp; where demand peaks.</text>
+<line x1="400" y1="704" x2="620" y2="704" stroke="#FFFFFF" stroke-opacity="0.14"/>
+<text x="400" y="748" font-size="14" font-weight="bold" fill="#FFC20E">Open report</text>
+<use href="#ar3" x="496" y="743"/>
+
+<!-- ═══════════════════════════════════════════════════
+     CARD 03 — Operations & Cost  (x=672, w=276)
+     ═══════════════════════════════════════════════════ -->
+<rect x="672" y="452" width="276" height="348" rx="18" fill="#15274A" stroke="#33486B"/>
+<text x="922" y="504" text-anchor="end" font-size="40" font-weight="bold" fill="#FFC20E" fill-opacity="0.30">03</text>
+<rect x="700" y="482" width="50" height="50" rx="13" fill="#FFFFFF" fill-opacity="0.08"/>
+<path d="M 713 511 A 12 12 0 0 1 737 511" fill="none" stroke="#FFC20E" stroke-width="2.6" stroke-linecap="round"/>
+<line x1="725" y1="509" x2="732" y2="502" stroke="#FFC20E" stroke-width="2.6" stroke-linecap="round"/>
+<circle cx="725" cy="509" r="2.6" fill="#FFC20E"/>
+<text x="700" y="599" font-size="21" font-weight="bold" fill="#F4F8FD">Operations &amp; Cost</text>
+<text x="700" y="630" font-size="14" fill="#96AACA">Lead time, efficiency &amp; cost.</text>
+<line x1="700" y1="704" x2="920" y2="704" stroke="#FFFFFF" stroke-opacity="0.14"/>
+<text x="700" y="748" font-size="14" font-weight="bold" fill="#FFC20E">Open report</text>
+<use href="#ar3" x="796" y="743"/>
+
+<!-- ═══════════════════════════════════════════════════
+     CARD 04 — Demand vs Demographics  (x=972, w=276)
+     ═══════════════════════════════════════════════════ -->
+<rect x="972" y="452" width="276" height="348" rx="18" fill="#15274A" stroke="#33486B"/>
+<text x="1222" y="504" text-anchor="end" font-size="40" font-weight="bold" fill="#FFC20E" fill-opacity="0.30">04</text>
+<rect x="1000" y="482" width="50" height="50" rx="13" fill="#FFFFFF" fill-opacity="0.08"/>
+<circle cx="1018" cy="501" r="4" fill="none" stroke="#FFC20E" stroke-width="2.4"/>
+<circle cx="1030" cy="501" r="4" fill="none" stroke="#FFC20E" stroke-width="2.4"/>
+<path d="M1012 516 A 6 6 0 0 1 1024 516" fill="none" stroke="#FFC20E" stroke-width="2.4" stroke-linecap="round"/>
+<path d="M1024 516 A 6 6 0 0 1 1036 516" fill="none" stroke="#FFC20E" stroke-width="2.4" stroke-linecap="round"/>
+<text x="1000" y="591" font-size="21" font-weight="bold" fill="#F4F8FD">Demand vs</text>
+<text x="1000" y="619" font-size="21" font-weight="bold" fill="#F4F8FD">Demographics</text>
+<text x="1000" y="650" font-size="14" fill="#96AACA">Who is under- or over-served.</text>
+<line x1="1000" y1="704" x2="1220" y2="704" stroke="#FFFFFF" stroke-opacity="0.14"/>
+<text x="1000" y="748" font-size="14" font-weight="bold" fill="#FFC20E">Open report</text>
+<use href="#ar3" x="1096" y="743"/>
+
+<!-- ═══════════════════════════════════════════════════
+     CARD 05 — Data Quality & Governance  (x=1272, w=276)
+     ═══════════════════════════════════════════════════ -->
+<rect x="1272" y="452" width="276" height="348" rx="18" fill="#15274A" stroke="#33486B"/>
+<text x="1522" y="504" text-anchor="end" font-size="40" font-weight="bold" fill="#FFC20E" fill-opacity="0.30">05</text>
+<rect x="1300" y="482" width="50" height="50" rx="13" fill="#FFFFFF" fill-opacity="0.08"/>
+<path d="M1325 487 L1335 492 L1335 502 L1325 511 L1315 502 L1315 492 Z" fill="none" stroke="#FFC20E" stroke-width="2.4" stroke-linejoin="round"/>
+<polyline points="1319,499 1324,504 1332,494" fill="none" stroke="#FFC20E" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="1300" y="591" font-size="21" font-weight="bold" fill="#F4F8FD">Data Quality &amp;</text>
+<text x="1300" y="619" font-size="21" font-weight="bold" fill="#F4F8FD">Governance</text>
+<text x="1300" y="650" font-size="14" fill="#96AACA">Trust, RLS &amp; anomalies.</text>
+<line x1="1300" y1="704" x2="1520" y2="704" stroke="#FFFFFF" stroke-opacity="0.14"/>
+<text x="1300" y="748" font-size="14" font-weight="bold" fill="#FFC20E">Open report</text>
+<use href="#ar3" x="1396" y="743"/>
+
+<!-- ═══════════════════════════════════════════════════
+     CARD 06 — Weather Impact & Operational Risk  (x=1572, w=276)
+     ═══════════════════════════════════════════════════ -->
+<rect x="1572" y="452" width="276" height="348" rx="18" fill="#15274A" stroke="#33486B"/>
+<text x="1822" y="504" text-anchor="end" font-size="40" font-weight="bold" fill="#FFC20E" fill-opacity="0.30">06</text>
+<rect x="1600" y="482" width="50" height="50" rx="13" fill="#FFFFFF" fill-opacity="0.08"/>
+<!-- Cloud icon -->
+<path d="M 1606 512 Q 1605 506 1611 504 Q 1613 496 1621 498 Q 1625 491 1632 495 Q 1640 493 1639 503 Q 1644 505 1642 512 Z" fill="none" stroke="#FFC20E" stroke-width="2.4" stroke-linejoin="round"/>
+<!-- Rain drops -->
+<line x1="1613" y1="516" x2="1611" y2="523" stroke="#FFC20E" stroke-width="2" stroke-linecap="round"/>
+<line x1="1621" y1="516" x2="1619" y2="523" stroke="#FFC20E" stroke-width="2" stroke-linecap="round"/>
+<line x1="1629" y1="516" x2="1627" y2="523" stroke="#FFC20E" stroke-width="2" stroke-linecap="round"/>
+<text x="1600" y="591" font-size="21" font-weight="bold" fill="#F4F8FD">Weather Impact &amp;</text>
+<text x="1600" y="619" font-size="21" font-weight="bold" fill="#F4F8FD">Operational Risk</text>
+<text x="1600" y="650" font-size="14" fill="#96AACA">Seasonality, weather &amp; cycle time.</text>
+<line x1="1600" y1="704" x2="1820" y2="704" stroke="#FFFFFF" stroke-opacity="0.14"/>
+<text x="1600" y="748" font-size="14" font-weight="bold" fill="#FFC20E">Open report</text>
+<use href="#ar3" x="1696" y="743"/>
+
+<!-- Footer -->
+<text x="960" y="1016" text-anchor="middle" font-size="13" fill="#96AACA">Microsoft Fabric  ·  DirectLake  ·  Power BI      ·      github.com/Nicolas-arch/3m-techcase-nyc-tlc</text>
+</svg>

@@ -1612,12 +1612,15 @@ Tabela: `zone_name` × `[Anomalous Trips]`, `[Max Anomaly Total]`, `[Max Anomaly
 
 ---
 
-## Próximos passos do material
+## 14. DAX da Página 6 — Weather Impact & Operational Risk (dia 9)
 
-A medida que o projeto avançar (páginas 4-5 do dashboard), este documento vai ganhar mais seções:
+### 14.1 Objetivo e contexto
 
-- ✅ Páginas 1–5 documentadas (§9–§13) — Power BI completo
-- **M / Power Query explained** — se precisarmos de transformações no nível do PBI
-- **Diagramas visuais** — exportados do draw.io
+Usar os dados NOAA já presentes na `dim_date` para duas análises complementares:
 
-Se quiser entrar fundo em algum tópico específico (ex.: "como funciona shuffling no Spark", "diferença entre wide e narrow transformations"), me avisa que crio uma seção dedicada.
+1. **Sazonalidade** (`dim_date[season]`): qual estação gera mais demanda? onde o lead time deteriora?
+2. **Eventos extremos** (`dim_date[is_extreme_weather]`): eventos climáticos severos comprimem demanda e afetam custo?
+
+Colunas usadas da `dim_date`:
+- `season` — Spring / Summer / Fall / Winter (derivada de MONTH no notebook Gold)
+- `se

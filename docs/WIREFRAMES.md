@@ -454,8 +454,6 @@ Reaproveita `[Anomalous Trips]` e `[Anomaly Rate]`. As 6 RLS roles vivem no sema
 
 ---
 
-## Página 6 — Security & Governance (a construir)
+## Página 6 — Weather Impact & Operational Risk ✅ CONSTRUÍDA (dia 9)
 
-**Objetivo**: demonstrar visualmente o efeito das RLS roles. Não está nos requisitos originais, mas adicionada para evidenciar funcionalidade.
-
-Wireframe será adicionado no dia 4 com 6 KPI cards (uma por role).
+**Objetivo**: usar os dados NOAA já na `dim_date` para responder como sazonalidade e eventos climáticos extremos afetam throughput de demanda e lead time — traduzindo para linguagem de sup
