@@ -1,6 +1,6 @@
 # 3M Technical Case — NYC TLC Yellow Taxi Analytics
 
-[![Status](https://img.shields.io/badge/status-in_development-yellow)]()
+[![Status](https://img.shields.io/badge/status-dashboard_complete-brightgreen)]()
 [![Stack](https://img.shields.io/badge/stack-Microsoft_Fabric-blue)]()
 [![Power BI](https://img.shields.io/badge/Power_BI-Desktop-F2C811)]()
 [![License](https://img.shields.io/badge/license-MIT-green)]()
@@ -102,9 +102,10 @@ Tokens necessários (cadastro gratuito):
 | Modelo semântico Power BI (DirectLake) | ✅ concluído (01/06) |
 | Features DAX (Calc Groups + Field Parameters + UDFs) | ✅ concluído (02/06) |
 | RLS (6 roles) + Theme corporativo + Conditional Formatting | ✅ concluído (03/06) |
-| Página 1 — Executive Overview (final, EN, hierarquia cromática) | ✅ concluído (04/06) |
-| Páginas 2-5 do dashboard | 🟡 em andamento (04-05/06) |
-| Apresentação (.pptx) | ⏳ (05-07/06) |
+| Página 1 — Executive Overview (final, EN, hierarquia cromática) | ✅ concluído |
+| Páginas 2-5 (Demand · Operations · Demographics · Data Quality/RLS) | ✅ concluído |
+| Verificação de consistência (canvas 1920×1080, tema, 6 features) | ✅ concluído |
+| Apresentação (.pptx) | 🟡 em montagem |
 | Entrega final + ensaios | ⏳ (08/06) |
 
 ## Highlights do desenvolvimento
@@ -116,7 +117,7 @@ Tokens necessários (cadastro gratuito):
 - **663 registros descobertos com data fora do escopo** (2001 a 2026) — descoberta de qualidade de dados.
 
 ### Silver
-- **115.756.175 trips** após limpeza (98,16% do volume Bronze).
+- **115.756.175 trips** após limpeza (97,16% do volume Bronze).
 - **3.379.869 linhas descartadas (2,84%)** com breakdown documentado:
   - 2.123.821 com distância ≤ 0 (cancelamentos / erros de meter)
   - 1.365.574 com tarifa negativa (estornos / correções)
@@ -160,7 +161,7 @@ Tokens necessários (cadastro gratuito):
 - **Gotcha documentado**: Composite Model NÃO mostra roles remotas em "Exibir como" do PBI Desktop — solução demo via medidas DAX equivalentes (`Manhattan Manager View = CALCULATE([Total Revenue], dim_zone[borough]="Manhattan")`).
 
 ### Página 1 — Executive Overview (dia 04/06)
-- **Canvas 1600×900px** com header navy + 5 KPI cards + trendline + borough chart + tabela Top 10 OD lanes.
+- **Canvas 1920×1080px** (padronizado em todas as 5 telas) com header navy + 5 KPI cards + trendline + borough chart + tabela Top 10 OD lanes.
 - **Hierarquia cromática 2+3**: 2 cards-sinalizadores (Revenue + Anomaly Rate, com cor dinâmica via DAX) + 3 cards informativos neutros.
 - **Internacionalização EN**: todos os subtítulos dinâmicos em inglês (apresentação global 3M).
 - **KPI hero substituído**: removido YoY Growth (redundante com subtitle do Revenue card) → adicionado **AVG LEAD TIME (min) = 17,56** como KPI universal de supply chain.
@@ -174,6 +175,13 @@ Tokens necessários (cadastro gratuito):
   - Fare plateau 2024 (-1,0%) — revenue growth via volume, não preço (saudável).
   - **Lead Time variability < 1% em 3 anos** (17,46→17,59→17,63 min) — KPI gold para S&OP global, slide próprio na apresentação.
 
+### Dashboard — Páginas 2 a 5 (dia 08/06)
+- **Página 2 — Demand Deep Dive**: heat map hora×dia (Matrix + color scale), sazonalidade por ano, top zonas e explorador por Field Parameters. Coluna `day_order_mon` no Gold pra ordenar Seg→Dom. Insight: dois regimes de demanda (pico de fim de tarde nos dias úteis + madrugada de fim de semana); 31% da demanda em 4h/dia.
+- **Página 3 — Operations & Cost**: scatter distância×tarifa, histograma de lead time (`duration_class`, espelha UDF `ClassifyTripDuration`), composição da tarifa (barra empilhada) e trend de cost-to-serve. UDF `ComputeRevenuePerMile` ao vivo. Insight: 78% das viagens em 5-30 min (lead time consistente); choque tarifário +33% em 2023.
+- **Página 4 — Demand vs Demographics** (fonte externa obrigatória): barra divergente de over/under-served, combo demanda×renda, treemap de concentração ABC e scorecard. Correlação de Pearson em DAX. Insight: Manhattan over-served ~4× (75% receita / 19% população); Brooklyn sub-servido.
+- **Página 5 — Data Quality & RLS/Governance**: breakdown de descarte, anomaly rate por borough, **showcase de Row-Level Security** (6 roles) e top anomalies por zona. Fecha o 6º feature obrigatório.
+- **Verificação final**: 5 telas em canvas 1920×1080, tema navy consistente, 6 features cobertos.
+
 Decisões técnicas e respostas-padrão para apresentação em [`docs/PRESENTATION_NOTES.md`](docs/PRESENTATION_NOTES.md).
 Material didático do código em [`docs/CODE_EXPLAINED.md`](docs/CODE_EXPLAINED.md).
 Layout do dashboard em [`docs/WIREFRAMES.md`](docs/WIREFRAMES.md).
@@ -183,7 +191,7 @@ Layout do dashboard em [`docs/WIREFRAMES.md`](docs/WIREFRAMES.md).
 - ✅ Escopo: Yellow Taxi 2022–2024
 - ✅ Fonte externa correlacionada (ACS Demographics + NOAA Weather)
 - ✅ Features obrigatórias: Time Intelligence ✅, Field Parameters ✅, Calculation Groups ✅, Conditional Formatting ✅, RLS ✅, UDFs DAX ✅
-- 🟡 Dashboard 5 páginas: Página 1 ✅, Páginas 2-5 em andamento
+- ✅ Dashboard 5 páginas: Executive Overview · Demand Deep Dive · Operations & Cost · Demand vs Demographics · Data Quality & RLS
 
 ## Autor
 
