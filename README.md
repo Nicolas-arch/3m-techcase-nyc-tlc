@@ -105,8 +105,8 @@ Tokens necessários (cadastro gratuito):
 | Página 1 — Executive Overview (final, EN, hierarquia cromática) | ✅ concluído |
 | Páginas 2-5 (Demand · Operations · Demographics · Data Quality/RLS) | ✅ concluído |
 | Verificação de consistência (canvas 1920×1080, tema, 6 features) | ✅ concluído |
-| Apresentação (.pptx) | 🟡 em montagem |
-| Entrega final + ensaios | ⏳ (08/06) |
+| Apresentação (.pptx) | ✅ concluído |
+| Entrega final + ensaios | ✅ concluído |
 
 ## Highlights do desenvolvimento
 
